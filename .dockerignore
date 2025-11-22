@@ -1,0 +1,112 @@
+# .dockerignore (root)
+
+# -------------
+# Git metadata
+# -------------
+.git
+.gitignore
+.gitmodules
+
+# -----------------------
+# Node / package managers
+# -----------------------
+node_modules
+**/node_modules
+npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+yarn.lock
+
+# -------------------------
+# Compilados / builds
+# -------------------------
+dist
+**/dist
+.next
+**/.next
+*.tsbuildinfo
+
+# -------------------------
+# Test coverage / reportes
+# -------------------------
+coverage
+**/coverage
+.nyc_output
+**/.nyc_output
+
+# -------------------------
+# Archivos de entorno (.env)
+# -------------------------
+.env
+**/.env
+.env.local
+.env.*.local
+
+# -----
+# Logs
+# -----
+logs
+**/logs
+*.log
+*.log.*
+
+# --------------------------
+# Datos locales (DB / cache)
+# --------------------------
+backend/postgres-data
+**/postgres-data
+docker-data
+**/docker-data
+
+# --------------------------
+# Hardhat / Smart Contracts
+# --------------------------
+contracts/cache
+contracts/artifacts
+contracts/typechain
+contracts/typechain-types
+contracts/coverage
+contracts/coverage.json
+contracts/node_modules
+
+# --------------------------
+# Frontend (Vite / React / Tailwind)
+# --------------------------
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/.cache
+frontend/build
+frontend/coverage
+frontend/coverage.json
+frontend/.env.local
+frontend/.env.*.local
+
+# --------------------------
+# Docker compose (no hace falta en la imagen)
+# --------------------------
+docker-compose.yml
+**/docker-compose.yml
+docker-compose.*.yml
+**/docker-compose.*.yml
+
+# ----------------
+# IDE / OS files
+# ----------------
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+**/.vscode
+**/.idea
+
+# -----------------
+# Otros archivos
+# -----------------
+README.md
+**/README.md
+*.md
+.editorconfig
