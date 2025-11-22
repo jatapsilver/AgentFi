@@ -135,7 +135,6 @@ export class OneInchService {
       from: dto.fromAddress,
     };
     if (dto.slippage) params.slippage = dto.slippage;
-    if (dto.destReceiver) params.receiver = dto.destReceiver;
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, { params, headers: this.getAuthHeaders() }),
@@ -172,7 +171,6 @@ export class OneInchService {
         from: dto.fromAddress,
       };
       if (dto.slippage) params.slippage = dto.slippage;
-      if (dto.destReceiver) params.receiver = dto.destReceiver;
       const { data: tx } = await firstValueFrom(
         this.httpService.get(url, { params, headers: this.getAuthHeaders() }),
       );

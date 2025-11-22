@@ -47,12 +47,4 @@ export class SimpleSwapTxDto {
   @IsOptional()
   @IsString()
   slippage?: string;
-
-  @ApiProperty({
-    description: 'Destination receiver address (optional)',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  destReceiver?: string;
 }

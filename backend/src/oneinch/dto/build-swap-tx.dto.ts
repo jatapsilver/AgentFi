@@ -51,14 +51,4 @@ export class BuildSwapTxDto {
   @IsOptional()
   @IsString()
   slippage?: string;
-
-  @ApiProperty({
-    description:
-      'Destination wallet address that will receive tokens (optional)',
-    example: '0xbddb6c4fc08af549d13a33455374e7ffbfd7fa70',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  destReceiver?: string;
 }
