@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Moon, Sun, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AgentFiWalletConnector from "@/components/AgentFiWalletConnector";
+import React, { useRef } from "react";
+import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 
 const Index = () => {
+  const walletConnectorRef = useRef<AgentFiWalletConnectorHandle>(null);
   const [isDark, setIsDark] = useState(true);
   const [language, setLanguage] = useState<"en" | "es">("en");
 
@@ -69,8 +72,8 @@ const Index = () => {
 
       {/* Controls in top-right */}
       <div className="absolute top-6 right-6 flex items-center gap-3 z-20">
-        {/* Wallet Connector */}
-        <AgentFiWalletConnector language={language} />
+        {/* Wallet Connector, con ref */}
+        <AgentFiWalletConnector ref={walletConnectorRef} language={language} />
 
         {/* Language toggle */}
         <button
@@ -151,21 +154,21 @@ const Index = () => {
               >
                 <Button
                   size="lg"
-                  onClick={() => console.log("Get Started clicked")}
+                  onClick={() => walletConnectorRef.current?.startSession()}
                   className="w-full sm:w-auto px-12 py-6 text-lg font-semibold rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 transition-all duration-300 hover:scale-105 border-0"
                 >
                   {t.cta}
                 </Button>
               </div>
             </div>
-          </div>
 
-          {/* Subtle glow effect at bottom */}
-          <div className="mt-8 text-center">
-            <div className="inline-block glass px-6 py-3 rounded-full">
-              <p className="text-sm text-muted-foreground">
-                {language === "en" ? "Powered by AI" : "Impulsado por IA"}
-              </p>
+            {/* Subtle glow effect at bottom */}
+            <div className="mt-8 text-center">
+              <div className="inline-block glass px-6 py-3 rounded-full">
+                <p className="text-sm text-muted-foreground">
+                  {language === "en" ? "Powered by AI" : "Impulsado por IA"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
