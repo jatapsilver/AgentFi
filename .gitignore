@@ -79,11 +79,6 @@ docker-data
 *.sln
 *.sw?
 
-# AI Agents / n8n data
-ai-agents/n8n-data
-ai-agents/n8n-logs
-ai-agents/.env
-
 # ----------------------
 # Frontend (Vite / React / Tailwind)
 # ----------------------
