@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  contracts-node:
+    build:
+      context: ..
+      dockerfile: ./Dockerfile
+      target: contracts
+    container_name: hack-contracts-node
+    working_dir: /app/contracts
+    command: npx hardhat node --hostname 0.0.0.0
+    ports:
+      - "8545:8545"
+    volumes:
+      - .:/app/contracts
+    env_file:
+      - .env
