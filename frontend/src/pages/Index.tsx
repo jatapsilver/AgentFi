@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { Moon, Sun, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Mic } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import AgentFiWalletConnector from "@/components/AgentFiWalletConnector";
 import React, { useRef } from "react";
 import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 
 const Index = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
   const examplePrompts = React.useMemo(
     () =>
@@ -207,6 +212,65 @@ const Index = () => {
 
             {/* Subtle glow effect at bottom */}
             <div className="mt-8 text-center">
+              {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
+              <div className="fixed bottom-8 right-8 z-50">
+                <Button
+                  size="icon"
+                  className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
+                  onClick={() => setIsChatOpen(true)}
+                  aria-label={language === "en" ? "Open Chat" : "Abrir Chat"}
+                >
+                  <MessageCircle className="w-7 h-7" />
+                </Button>
+              </div>
+
+              {/* Modal de chat */}
+              <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                <DialogContent className="max-w-lg">
+                  <div className="flex flex-col gap-4">
+                    <div className="bg-muted rounded-lg p-4 min-h-[120px] text-muted-foreground">
+                      {/* Mensajes del chat aparecerán aquí */}
+                      <span className="italic opacity-60">
+                        {language === "en"
+                          ? "Chat history will appear here."
+                          : "El historial del chat aparecerá aquí."}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder={examplePrompts[promptIndex]}
+                        className="flex-1 px-4 py-2 rounded-lg border border-muted focus:outline-none text-black"
+                      />
+
+                      <Button
+                        size="sm"
+                        className="rounded-full px-4"
+                        onClick={() => {
+                          /* Aquí se enviaría el mensaje al agente */ setChatInput(
+                            ""
+                          );
+                        }}
+                      >
+                        {language === "en" ? "Send" : "Enviar"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full px-2"
+                        onClick={() => {
+                          /* Aquí se grabaría y enviaría la nota de voz */
+                        }}
+                      >
+                        <Mic className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    {/* Aquí se mostrarían los mensajes del chat */}
+                  </div>
+                </DialogContent>
+              </Dialog>
               <div className="inline-block glass px-6 py-3 rounded-full min-h-[2rem]">
                 <span className="text-sm text-muted-foreground font-mono">
                   {displayedText}
