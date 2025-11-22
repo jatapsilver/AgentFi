@@ -5,8 +5,20 @@
   "scripts": {
     "test": "npx hardhat test",
     "node": "npx hardhat node",
-    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
-    "deploy:testnet": "npx hardhat run scripts/deploy.js --network testnet"
+    "compile": "npx hardhat compile",
+    "deploy:pyth:sepolia": "npx hardhat run scripts/deployPythPriceConsumer.ts --network sepolia",
+    "deploy:pyth:baseSepolia": "npx hardhat run scripts/deployPythPriceConsumer.ts --network baseSepolia",
+    "deploy:pyth:polygonAmoy": "npx hardhat run scripts/deployPythPriceConsumer.ts --network polygonAmoy",
+    "deploy:pyth:optimismSepolia": "npx hardhat run scripts/deployPythPriceConsumer.ts --network optimismSepolia",
+    "deploy:pyth:arbitrumSepolia": "npx hardhat run scripts/deployPythPriceConsumer.ts --network arbitrumSepolia",
+    "deploy:pyth:scrollSepolia": "npx hardhat run scripts/deployPythPriceConsumer.ts --network scrollSepolia",
+    "update:feed:sepolia": "npx hardhat run scripts/updateFeed.ts --network sepolia",
+    "update:feed:baseSepolia": "npx hardhat run scripts/updateFeed.ts --network baseSepolia",
+    "update:feed:polygonAmoy": "npx hardhat run scripts/updateFeed.ts --network polygonAmoy",
+    "update:feed:optimismSepolia": "npx hardhat run scripts/updateFeed.ts --network optimismSepolia",
+    "update:feed:arbitrumSepolia": "npx hardhat run scripts/updateFeed.ts --network arbitrumSepolia",
+    "update:feed:scrollSepolia": "npx hardhat run scripts/updateFeed.ts --network scrollSepolia",
+    "update:all": "node scripts/updateAllTestnets.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",

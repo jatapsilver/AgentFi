@@ -3,22 +3,21 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const RPC_URL = process.env.RPC_URL || "";
-const RPC_URL_FALLBACK =
-  process.env.RPC_URL_FALLBACK || "http://127.0.0.1:8545";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const CHAIN_ID = process.env.CHAIN_ID
-  ? parseInt(process.env.CHAIN_ID, 10)
-  : 31337;
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
-// Function to get RPC URL with fallback
-function getRpcUrl() {
-  if (RPC_URL) {
-    return RPC_URL;
-  }
-  console.warn("⚠️  RPC_URL not found, using fallback:", RPC_URL_FALLBACK);
-  return RPC_URL_FALLBACK;
+// Helper: build per-network RPC env var name (RPC_URL_<UPPER>)
+function rpcFor(name, fallback) {
+  const upper = name.toUpperCase();
+  const v = process.env[`RPC_URL_${upper}`];
+  if (v && v.length > 0) return v;
+  if (fallback) return fallback;
+  console.warn(`⚠️  Missing RPC for ${name} -> define RPC_URL_${upper}`);
+  return "http://127.0.0.1:8545"; // final generic fallback
+}
+
+function accounts() {
+  return PRIVATE_KEY ? [PRIVATE_KEY] : [];
 }
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -34,15 +33,40 @@ const config = {
   },
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {
-      chainId: 31337,
+    hardhat: { chainId: 31337 },
+    // Testnet networks only
+    sepolia: {
+      url: rpcFor("sepolia"),
+      chainId: 11155111,
+      accounts: accounts(),
     },
-    testnet: {
-      url: getRpcUrl(),
-      chainId: CHAIN_ID,
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+    baseSepolia: {
+      url: rpcFor("base_sepolia"),
+      chainId: 84532,
+      accounts: accounts(),
+    },
+    polygonAmoy: {
+      url: rpcFor("polygon_amoy"),
+      chainId: 80002,
+      accounts: accounts(),
+    },
+    optimismSepolia: {
+      url: rpcFor("optimism_sepolia"),
+      chainId: 11155420,
+      accounts: accounts(),
+    },
+    arbitrumSepolia: {
+      url: rpcFor("arbitrum_sepolia"),
+      chainId: 421614,
+      accounts: accounts(),
+    },
+    scrollSepolia: {
+      url: rpcFor("scroll_sepolia"),
+      chainId: 534351,
+      accounts: accounts(),
     },
   },
+  // Only provide api keys for networks we intend to verify (sepolia only)
   etherscan: {
     apiKey: ETHERSCAN_API_KEY || "",
   },
