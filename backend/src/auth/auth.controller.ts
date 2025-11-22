@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
   Post,
   UsePipes,
   ValidationPipe,
@@ -34,5 +36,22 @@ export class AuthController {
   })
   login(@Body() dto: LoginUserDto) {
     return this.authService.login(dto);
+  }
+
+  @Get('validate/:token')
+  @ApiOperation({
+    summary: 'Validate JWT token',
+    description: 'Check if the provided JWT token is valid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token is valid',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired token',
+  })
+  validateToken(@Param('token') token: string) {
+    return this.authService.validateToken(token);
   }
 }

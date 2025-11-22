@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotImplementedException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { LoginUserDto } from 'src/user/dto/login-user.dto';
 import { UserRepository } from 'src/user/user.repository';
@@ -33,5 +37,38 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
     return token;
+  }
+
+  async validateToken(token: string) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new NotImplementedException('Server configuration is incorrect');
+    }
+    const payload = this.jwtService.verify(token, { secret });
+
+    payload.exp = new Date(payload.exp * 1000);
+
+    payload.iat = new Date(payload.iat * 1000);
+
+    if (!payload.role) {
+      throw new UnauthorizedException(
+        'You do not have the necessary permissions',
+      );
+    }
+    if (payload.exp < new Date()) {
+      return { valid: false };
+    }
+    if (!payload) {
+      return { valid: false };
+    }
+    if (!payload.sub) {
+      return { valid: false };
+    }
+    const user = await this.userRepository.getUserById(payload.sub);
+    if (!user) {
+      return { valid: false };
+    }
+    const walletAddress = user.walletAddress;
+    return { valid: true, walletAddress };
   }
 }

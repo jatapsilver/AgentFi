@@ -21,4 +21,8 @@ export class UserRepository {
     });
     return await this.userRepository.save(newUser);
   }
+
+  async getUserById(sub: string) {
+    return await this.userRepository.findOne({ where: { id: sub } });
+  }
 }
