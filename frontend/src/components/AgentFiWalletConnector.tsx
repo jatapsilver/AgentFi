@@ -15,6 +15,7 @@ import {
   useSignOut,
   useSignInWithEmail,
   useVerifyEmailOTP,
+  useCreateEvmEoaAccount,
 } from "@coinbase/cdp-hooks";
 
 interface AgentFiWalletConnectorProps {
@@ -24,7 +25,9 @@ interface AgentFiWalletConnectorProps {
 const AgentFiWalletConnector = ({
   language = "en",
 }: AgentFiWalletConnectorProps) => {
-  console.log("🎬 [Wallet] COMPONENTE RENDERIZANDO");
+  console.log(
+    "🎬 [Wallet] ==================== COMPONENTE RENDERIZANDO ===================="
+  );
 
   const { isSignedIn } = useIsSignedIn();
   console.log(
@@ -35,12 +38,18 @@ const AgentFiWalletConnector = ({
     ")"
   );
 
-  const { evmAddress } = useEvmAddress();
-  console.log("💼 [Wallet] evmAddress:", evmAddress);
+  const evmAddressResult = useEvmAddress();
+  console.log(
+    "💼 [Wallet] useEvmAddress() resultado completo:",
+    evmAddressResult
+  );
+  const { evmAddress } = evmAddressResult;
+  console.log("💼 [Wallet] evmAddress extraído:", evmAddress);
 
   const { signOut: performSignOut } = useSignOut();
   const { signInWithEmail } = useSignInWithEmail();
   const { verifyEmailOTP } = useVerifyEmailOTP();
+  const { createEvmEoaAccount } = useCreateEvmEoaAccount();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -50,11 +59,17 @@ const AgentFiWalletConnector = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Monitor cambios en evmAddress
+  useEffect(() => {
+    console.log("👀 [useEffect] evmAddress cambió a:", evmAddress);
+    console.log("👀 [useEffect] isSignedIn actual:", isSignedIn);
+  }, [evmAddress, isSignedIn]);
+
   // Logs de estado
-  console.log("📊 [Wallet] Estado actual:", {
-    isSignedIn,
-    evmAddress,
-  });
+  console.log("📊 [Wallet] ========== ESTADO ACTUAL ==========");
+  console.log("📊 [Wallet] isSignedIn:", isSignedIn);
+  console.log("📊 [Wallet] evmAddress:", evmAddress);
+  console.log("📊 [Wallet] =====================================");
 
   const content = {
     en: {
@@ -97,59 +112,95 @@ const AgentFiWalletConnector = ({
   const t = content[language];
 
   const handleSendCode = async () => {
+    console.log("📧 [Email] Iniciando envío de código");
+    console.log("📧 [Email] Email ingresado:", email);
+
     if (!email || !email.includes("@")) {
+      console.log("❌ [Email] Email inválido");
       setError(t.errorInvalidEmail);
       return;
     }
 
     setIsLoading(true);
     setError("");
+    console.log("⏳ [Email] setIsLoading(true)");
 
     try {
+      console.log("📤 [Email] Llamando signInWithEmail...");
       const result = await signInWithEmail({ email });
+      console.log("✅ [Email] Respuesta de signInWithEmail:", result);
+      console.log("🔑 [Email] flowId recibido:", result?.flowId);
+
       if (result?.flowId) {
         setFlowId(result.flowId);
         setStep("otp");
         setError(t.codeSent);
+        console.log("✅ [Email] Cambiando a paso OTP");
+      } else {
+        console.log("⚠️ [Email] No se recibió flowId en la respuesta");
       }
     } catch (err) {
-      console.error("Error sending code:", err);
+      console.error("❌ [Email] Error sending code:", err);
       setError(t.errorSendingCode);
     } finally {
       setIsLoading(false);
+      console.log("⏹️ [Email] setIsLoading(false)");
     }
   };
 
   const handleVerifyOTP = async () => {
+    console.log("🔐 [OTP] Iniciando verificación de OTP");
+    console.log("🔐 [OTP] OTP ingresado:", otp);
+    console.log("🔐 [OTP] flowId actual:", flowId);
+    console.log("🔐 [OTP] Longitud OTP:", otp.length);
+
     if (!otp || otp.length !== 6) {
+      console.log("❌ [OTP] OTP inválido (debe ser 6 dígitos)");
       setError("Please enter a 6-digit code");
       return;
     }
 
     setIsLoading(true);
     setError("");
+    console.log("⏳ [OTP] setIsLoading(true)");
 
     try {
-      await verifyEmailOTP({ otp, flowId });
+      console.log("📤 [OTP] Llamando verifyEmailOTP con:", { otp, flowId });
+      const result = await verifyEmailOTP({ otp, flowId });
+      console.log("✅ [OTP] Respuesta de verifyEmailOTP:", result);
+      console.log("✅ [OTP] Verificación exitosa!");
+
+      console.log("🚪 [OTP] Cerrando dialog...");
       setIsDialogOpen(false);
+
+      console.log("🧹 [OTP] Reseteando formulario...");
       resetForm();
+
+      console.log(
+        "✅ [OTP] Proceso completado - esperando actualización de isSignedIn"
+      );
     } catch (err) {
-      console.error("Error verifying OTP:", err);
+      console.error("❌ [OTP] Error verifying OTP:", err);
+      console.error("❌ [OTP] Error completo:", JSON.stringify(err, null, 2));
       setError(t.errorVerifying);
     } finally {
       setIsLoading(false);
+      console.log("⏹️ [OTP] setIsLoading(false)");
     }
   };
 
   const resetForm = () => {
+    console.log("🧹 [Reset] Reseteando formulario");
     setEmail("");
     setOtp("");
     setFlowId("");
     setStep("email");
     setError("");
+    console.log("🧹 [Reset] Formulario reseteado");
   };
 
   const handleDialogClose = () => {
+    console.log("🚪 [Dialog] Cerrando dialog");
     setIsDialogOpen(false);
     resetForm();
   };
@@ -185,6 +236,13 @@ const AgentFiWalletConnector = ({
     "| !isSignedIn=",
     !isSignedIn
   );
+
+  useEffect(() => {
+    if (isSignedIn && evmAddress === null) {
+      console.log("🆕 [Wallet] Creando wallet EOA para usuario...");
+      createEvmEoaAccount();
+    }
+  }, [isSignedIn, evmAddress, createEvmEoaAccount]);
 
   if (!isSignedIn) {
     console.log("🔓 [Wallet] ✅ ENTRANDO al bloque de botón CONNECT WALLET");
@@ -223,15 +281,8 @@ const AgentFiWalletConnector = ({
                         disabled={isLoading}
                       />
                     </div>
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
-
-                  {error && (
-                    <p
-                      className={`text-sm ${error === t.codeSent ? "text-green-500" : "text-destructive"}`}
-                    >
-                      {error}
-                    </p>
-                  )}
 
                   <Button
                     onClick={handleSendCode}
@@ -303,6 +354,12 @@ const AgentFiWalletConnector = ({
     "✅ [Wallet] Retornando JSX de wallet conectada con dirección:",
     evmAddress
   );
+  console.log("✅ [Wallet] evmAddress es null?:", evmAddress === null);
+  console.log(
+    "✅ [Wallet] evmAddress es undefined?:",
+    evmAddress === undefined
+  );
+
   return (
     <div className="glass-intense px-4 py-2 rounded-full flex items-center gap-3">
       <Wallet className="w-4 h-4 text-primary" />
@@ -310,7 +367,7 @@ const AgentFiWalletConnector = ({
       <button
         onClick={handleCopyAddress}
         className="text-sm font-mono text-foreground hover:text-primary transition-colors"
-        title={evmAddress || ""}
+        title={evmAddress || "Loading wallet..."}
       >
         {evmAddress
           ? `${evmAddress.slice(0, 6)}...${evmAddress.slice(-4)}`
