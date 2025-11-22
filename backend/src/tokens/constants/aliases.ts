@@ -9,7 +9,7 @@ export const SYMBOL_ALIASES: Record<string, string> = {
   USDCe: 'USDC',
   USDCE: 'USDC',
   WETH: 'WETH', // self mappings optional for clarity
-  ETH: 'WETH', // on Polygon user may input ETH wanting WETH
+  ETH: 'ETH', // on Polygon user may input ETH wanting WETH
 };
 
 export function normalizeSymbol(raw: string): string {
