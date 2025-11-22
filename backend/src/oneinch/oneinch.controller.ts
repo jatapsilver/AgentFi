@@ -45,13 +45,71 @@ export class OneInchController {
 
   @Get('quote/simple')
   @ApiOperation({
-    summary: 'Get quote by symbols',
+    summary: '🔥 Get quote by symbols (RECOMMENDED FOR AGENTS)',
     description:
-      'Resolve symbols + network internally and return enriched quote.',
+      'Get swap quote using human-readable token symbols and decimal amounts. Backend resolves symbols to addresses and converts amounts to wei automatically. Perfect for N8N agents and chat interfaces.',
+  })
+  @ApiQuery({
+    name: 'network',
+    required: false,
+    description: 'Network: base, ethereum, polygon, arbitrum, optimism, etc.',
+    example: 'base',
+  })
+  @ApiQuery({
+    name: 'fromSymbol',
+    required: true,
+    description: 'Source token symbol',
+    example: 'ETH',
+  })
+  @ApiQuery({
+    name: 'toSymbol',
+    required: true,
+    description: 'Destination token symbol',
+    example: 'USDC',
+  })
+  @ApiQuery({
+    name: 'amount',
+    required: true,
+    description: 'Human-readable decimal amount (NOT wei)',
+    example: '0.5',
+  })
+  @ApiQuery({
+    name: 'slippage',
+    required: false,
+    description: 'Slippage tolerance in percent (e.g., 1 = 1%)',
+    example: '1',
   })
   @ApiResponse({
     status: 200,
-    description: 'Simple quote retrieved successfully',
+    description: 'Quote retrieved with resolved tokens and conversion details',
+    schema: {
+      example: {
+        network: { key: 'base', chainId: 8453, name: 'Base Mainnet' },
+        input: {
+          fromSymbol: 'ETH',
+          toSymbol: 'USDC',
+          amountDecimal: '0.5',
+          amountWei: '500000000000000000',
+        },
+        tokens: {
+          from: {
+            address: '0x4200000000000000000000000000000000000006',
+            decimals: 18,
+            symbol: 'WETH',
+          },
+          to: {
+            address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            decimals: 6,
+            symbol: 'USDC',
+          },
+        },
+        quote: {
+          dstAmount: '1376030000',
+          srcAmount: '500000000000000000',
+          protocols: [],
+        },
+      },
+    },
   })
   getQuoteSimple(@Query() dto: SimpleQuoteDto) {
     return this.oneInchService.getQuoteSimple(dto);
@@ -75,13 +133,44 @@ export class OneInchController {
 
   @Post('tx/simple')
   @ApiOperation({
-    summary: 'Build swap transaction by symbols',
+    summary: '🔥 Build swap transaction by symbols (RECOMMENDED FOR AGENTS)',
     description:
-      'Resolve symbols + network and construct ready-to-sign swap transaction.',
+      'Build ready-to-sign swap transaction using token symbols and decimal amounts. Returns transaction object that can be sent to user wallet for signing. Perfect for N8N agents completing swaps.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Simple transaction built successfully',
+    description:
+      'Transaction built successfully with resolved tokens and tx data',
+    schema: {
+      example: {
+        network: { key: 'polygon', chainId: 137, name: 'Polygon Mainnet' },
+        input: {
+          fromSymbol: 'MATIC',
+          toSymbol: 'USDC',
+          amountDecimal: '10',
+          amountWei: '10000000000000000000',
+        },
+        tokens: {
+          from: {
+            address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+            decimals: 18,
+            symbol: 'WPOL',
+          },
+          to: {
+            address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+            decimals: 6,
+            symbol: 'USDC',
+          },
+        },
+        tx: {
+          to: '0x1111111254eeb25477b68fb85ed929f73a960582',
+          data: '0x12aa3caf...',
+          value: '0',
+          gas: 185000,
+          gasPrice: '50000000000',
+        },
+      },
+    },
   })
   buildSwapTxSimple(@Body() dto: SimpleSwapTxDto) {
     return this.oneInchService.buildSwapTxSimple(dto);
@@ -89,20 +178,36 @@ export class OneInchController {
 
   @Get('balances/:address')
   @ApiOperation({
-    summary: 'Get wallet balances',
-    description: 'Get token balances for a wallet on a specific network.',
+    summary: '🔥 Get wallet token balances (RECOMMENDED FOR AGENTS)',
+    description:
+      'Check what tokens a wallet holds on a specific network. Useful for agents to verify user has sufficient balance before attempting swaps.',
   })
   @ApiParam({
     name: 'address',
-    description: 'Wallet address',
+    description: 'Wallet address to check',
     example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7',
   })
   @ApiQuery({
     name: 'network',
     required: false,
-    description: 'Network key (default base)',
+    description:
+      'Network: base, ethereum, polygon, arbitrum, etc. (default: base)',
+    example: 'polygon',
   })
-  @ApiResponse({ status: 200, description: 'Balances retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Balances retrieved successfully',
+    schema: {
+      example: {
+        network: { key: 'polygon', chainId: 137, name: 'Polygon Mainnet' },
+        balances: {
+          '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270': '5247382947329847329',
+          '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174': '150000000',
+          '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619': '250000000000000000',
+        },
+      },
+    },
+  })
   getBalances(
     @Param('address') address: string,
     @Query('network') network?: string,
