@@ -24,8 +24,9 @@ export class SimpleSwapTxDto {
   toSymbol: string;
 
   @ApiProperty({
-    description: 'Human readable amount (decimal)',
-    example: '0.5',
+    description:
+      'Decimal amount with DOT as separator (NOT comma). Examples: 0.5, 0.000005, 100, 1.25',
+    example: '0.000005',
   })
   @IsString()
   @Matches(/^[0-9]+(\.[0-9]+)?$/)

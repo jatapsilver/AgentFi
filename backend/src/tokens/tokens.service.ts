@@ -137,15 +137,19 @@ export class TokensService {
     if (!/^[0-9]+(\.[0-9]+)?$/.test(amountDecimal)) {
       throw new Error(`Invalid decimal amount: ${amountDecimal}`);
     }
-    const [integerPart, fractionalRaw = ''] = amountDecimal.split('.');
-    const fractionalPadded = (fractionalRaw + '0'.repeat(decimals)).slice(
-      0,
-      decimals,
-    );
-    const full = integerPart + fractionalPadded;
-    if (!/^[0-9]+$/.test(full)) {
-      throw new Error(`Invalid decimal amount: ${amountDecimal}`);
+    const [integerPart, fractionalPart = ''] = amountDecimal.split('.');
+
+    // Pad fractional part to match decimals length
+    const paddedFractional = fractionalPart.padEnd(decimals, '0');
+
+    // If fractional part is longer than decimals, it's invalid
+    if (fractionalPart.length > decimals) {
+      throw new Error(
+        `Amount has too many decimal places. Max ${decimals} decimals allowed.`,
+      );
     }
+
+    const full = integerPart + paddedFractional;
     return BigInt(full).toString();
   }
 }
