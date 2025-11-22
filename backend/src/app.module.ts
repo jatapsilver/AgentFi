@@ -6,6 +6,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OneInchModule } from './oneinch/oneinch.module';
 import { envValidationSchema } from './config/env.validation';
+import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { envValidationSchema } from './config/env.validation';
       }),
     }),
     OneInchModule,
+    UserModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
