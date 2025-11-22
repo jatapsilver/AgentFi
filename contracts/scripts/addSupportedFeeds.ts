@@ -4,7 +4,7 @@ dotenv.config();
 
 /**
  * Script to add additional supported feed IDs to existing PythPriceConsumer contracts
- * 
+ *
  * Usage:
  * npx hardhat run scripts/addSupportedFeeds.ts --network sepolia
  */
@@ -13,7 +13,8 @@ dotenv.config();
 const ADDITIONAL_FEEDS = {
   BTC_USD: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
   SOL_USD: "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-  USDC_USD: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+  USDC_USD:
+    "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
 };
 
 function upperName(n: string) {
@@ -58,7 +59,7 @@ async function main() {
     try {
       // Check if already supported
       const isSupported = await consumer.supportedFeedIds(feedId);
-      
+
       if (isSupported) {
         console.log(`⏭️  ${name} (${feedId}) - Already supported`);
         continue;
