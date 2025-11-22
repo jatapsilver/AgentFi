@@ -1,0 +1,275 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_pythAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "initialFeedIds",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "feedId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "indexed": false,
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "publishTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "FeedPriceUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "feedId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "FeedSupported",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnerTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "feedId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "addSupportedFeed",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "feedId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getStoredPrice",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "int64",
+            "name": "price",
+            "type": "int64"
+          },
+          {
+            "internalType": "int32",
+            "name": "expo",
+            "type": "int32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "publishTime",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct PythPriceConsumer.StoredPriceData",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "lastPriceData",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "publishTime",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pyth",
+    "outputs": [
+      {
+        "internalType": "contract IPyth",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "supportedFeedIds",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "feedIds",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "updateAndGetMultiple",
+    "outputs": [
+      {
+        "internalType": "int64[]",
+        "name": "prices",
+        "type": "int64[]"
+      },
+      {
+        "internalType": "int32[]",
+        "name": "expos",
+        "type": "int32[]"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "feedId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "updateAndGetPrice",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

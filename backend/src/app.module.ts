@@ -8,6 +8,7 @@ import { OneInchModule } from './oneinch/oneinch.module';
 import { envValidationSchema } from './config/env.validation';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { PythModule } from './pyth/pyth.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AuthModule } from './auth/auth.module';
     OneInchModule,
     UserModule,
     AuthModule,
+    PythModule,
   ],
   controllers: [AppController],
   providers: [AppService],
