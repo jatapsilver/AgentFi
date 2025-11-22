@@ -11,17 +11,15 @@ import { firstValueFrom } from 'rxjs';
 import { GetQuoteDto } from './dto/get-quote.dto';
 import { BuildSwapTxDto } from './dto/build-swap-tx.dto';
 import { SimpleQuoteDto } from './dto/simple-quote.dto';
+import { SimpleSwapTxDto } from './dto/simple-swap-tx.dto';
 import { TokensService } from '../tokens/tokens.service';
 import { SwapQuoteLog } from './entities/swap-quote-log.entity';
-import { NETWORKS } from '../tokens/constants/networks';
+import { resolveNetworkConfig } from '../tokens/constants/networks';
 
 @Injectable()
 export class OneInchService {
   private readonly apiKey: string;
   private readonly baseUrl: string;
-  // Se elimina dependencia de variable de entorno ONEINCH_CHAIN_ID.
-  // Para endpoints "legacy" se fija por defecto Polygon; los nuevos usan TokensService.
-  private readonly defaultChainId: number = NETWORKS.polygon.chainId;
 
   constructor(
     private readonly httpService: HttpService,
@@ -38,17 +36,15 @@ export class OneInchService {
   }
 
   private getAuthHeaders() {
-    const headers: Record<string, string> = {
-      accept: 'application/json',
-    };
-    if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
-    }
+    const headers: Record<string, string> = { accept: 'application/json' };
+    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
     return headers;
   }
 
+  // Quote using direct token addresses; now supports dynamic network via optional network param.
   async getQuote(dto: GetQuoteDto, userId?: string) {
-    const url = `${this.baseUrl}/swap/v6.0/${this.defaultChainId}/quote`;
+    const network = resolveNetworkConfig((dto as any).network); // extend DTO without breaking validation
+    const url = `${this.baseUrl}/swap/v6.0/${network.chainId}/quote`;
     const params: any = {
       src: dto.fromTokenAddress,
       dst: dto.toTokenAddress,
@@ -56,12 +52,6 @@ export class OneInchService {
     };
     if (dto.fromAddress) params.from = dto.fromAddress;
     if (dto.slippage) params.slippage = dto.slippage;
-
-    console.log('1inch Request:', {
-      url,
-      params,
-      chainId: this.defaultChainId,
-    });
 
     try {
       const response = await firstValueFrom(
@@ -71,7 +61,7 @@ export class OneInchService {
 
       const log = new SwapQuoteLog();
       log.userId = userId;
-      log.chainId = String(this.defaultChainId);
+      log.chainId = String(network.chainId);
       log.fromTokenAddress = dto.fromTokenAddress;
       log.toTokenAddress = dto.toTokenAddress;
       log.amountIn = dto.amount;
@@ -79,22 +69,17 @@ export class OneInchService {
       log.fromAddress = dto.fromAddress ?? null;
       log.oneInchRequestId = data?.requestId ?? data?.id ?? null;
       log.rawResponse = data ?? null;
-
       await this.swapQuoteLogRepo.save(log);
 
-      return data;
+      return { network, quote: data };
     } catch (err) {
-      console.error(
-        '1inch API Error:',
-        err?.response?.data || err?.message || err,
-      );
       throw new InternalServerErrorException(
         `Error fetching quote from 1inch: ${err?.response?.data?.description || err?.message || 'Unknown error'}`,
       );
     }
   }
 
-  // New simple quote method using TokensService to resolve symbols & network.
+  // Symbol + network based quote.
   async getQuoteSimple(dto: SimpleQuoteDto) {
     try {
       const { network, token: fromToken } =
@@ -129,10 +114,7 @@ export class OneInchService {
           amountDecimal: dto.amount,
           amountWei,
         },
-        tokens: {
-          from: fromToken,
-          to: toToken,
-        },
+        tokens: { from: fromToken, to: toToken },
         quote,
       };
     } catch (err) {
@@ -142,8 +124,10 @@ export class OneInchService {
     }
   }
 
+  // Build swap transaction from raw addresses.
   async buildSwapTx(dto: BuildSwapTxDto) {
-    const url = `${this.baseUrl}/swap/v6.0/${this.defaultChainId}/swap`;
+    const network = resolveNetworkConfig((dto as any).network);
+    const url = `${this.baseUrl}/swap/v6.0/${network.chainId}/swap`;
     const params: any = {
       src: dto.fromTokenAddress,
       dst: dto.toTokenAddress,
@@ -152,35 +136,73 @@ export class OneInchService {
     };
     if (dto.slippage) params.slippage = dto.slippage;
     if (dto.destReceiver) params.receiver = dto.destReceiver;
-
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, { params, headers: this.getAuthHeaders() }),
       );
-      return response.data;
+      return { network, tx: response.data };
     } catch (err) {
-      console.error(
-        '1inch API Error:',
-        err?.response?.data || err?.message || err,
-      );
       throw new InternalServerErrorException(
         `Error building swap transaction with 1inch: ${err?.response?.data?.description || err?.message || 'Unknown error'}`,
       );
     }
   }
 
-  async getWalletBalances(address: string) {
-    const url = `${this.baseUrl}/balance/v1.2/${this.defaultChainId}/balances/${address}`;
+  // Build swap transaction resolving symbols.
+  async buildSwapTxSimple(dto: SimpleSwapTxDto) {
+    try {
+      const { network, token: fromToken } =
+        await this.tokensService.resolveTokenBySymbol(
+          dto.network,
+          dto.fromSymbol,
+        );
+      const { token: toToken } = await this.tokensService.resolveTokenBySymbol(
+        network.key,
+        dto.toSymbol,
+      );
+      const amountWei = this.tokensService.toBaseUnits(
+        dto.amount,
+        fromToken.decimals,
+      );
+      const url = `${this.baseUrl}/swap/v6.0/${network.chainId}/swap`;
+      const params: Record<string, string> = {
+        src: fromToken.address,
+        dst: toToken.address,
+        amount: amountWei,
+        from: dto.fromAddress,
+      };
+      if (dto.slippage) params.slippage = dto.slippage;
+      if (dto.destReceiver) params.receiver = dto.destReceiver;
+      const { data: tx } = await firstValueFrom(
+        this.httpService.get(url, { params, headers: this.getAuthHeaders() }),
+      );
+      return {
+        network,
+        input: {
+          fromSymbol: dto.fromSymbol,
+          toSymbol: dto.toSymbol,
+          amountDecimal: dto.amount,
+          amountWei,
+        },
+        tokens: { from: fromToken, to: toToken },
+        tx,
+      };
+    } catch (err) {
+      throw new InternalServerErrorException(
+        `Error building simple swap tx: ${err?.response?.data?.description || err?.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  async getWalletBalances(address: string, rawNetwork?: string) {
+    const network = resolveNetworkConfig(rawNetwork);
+    const url = `${this.baseUrl}/balance/v1.2/${network.chainId}/balances/${address}`;
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, { headers: this.getAuthHeaders() }),
       );
-      return response.data;
+      return { network, balances: response.data };
     } catch (err) {
-      console.error(
-        '1inch API Error:',
-        err?.response?.data || err?.message || err,
-      );
       throw new InternalServerErrorException(
         `Error fetching balances from 1inch: ${err?.response?.data?.description || err?.message || 'Unknown error'}`,
       );
@@ -191,9 +213,25 @@ export class OneInchService {
     return {
       ok: true,
       baseUrl: this.baseUrl,
-      chainId: this.defaultChainId,
       hasApiKey: Boolean(this.apiKey && this.apiKey.length > 0),
-      mode: 'legacy-default-polygon',
+      supportedNetworks: [
+        'ethereum',
+        'base',
+        'polygon',
+        'bsc',
+        'arbitrum',
+        'optimism',
+        'avalanche',
+        'fantom',
+        'gnosis',
+        'zksync',
+        'linea',
+        'scroll',
+        'blast',
+        'mode',
+      ],
+      defaultNetwork: 'base',
+      note: 'Use symbol-based endpoints for dynamic network resolution.',
     };
   }
 

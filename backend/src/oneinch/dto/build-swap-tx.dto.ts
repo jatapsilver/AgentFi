@@ -3,6 +3,15 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class BuildSwapTxDto {
   @ApiProperty({
+    description: 'Network identifier (e.g. base, ethereum, polygon)',
+    required: false,
+    example: 'polygon',
+  })
+  @IsOptional()
+  @IsString()
+  network?: string;
+
+  @ApiProperty({
     description: 'Source token contract address',
     example: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
   })
