@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Wallet, LogOut, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { loginWithBackend } from "../serve/auth";
 import {
   Dialog,
   DialogContent,
@@ -37,11 +38,13 @@ const AgentFiWalletConnector = ({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [verifiedEmail, setVerifiedEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [flowId, setFlowId] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [backendError, setBackendError] = useState("");
 
   // Monitor cambios en evmAddress
   useEffect(() => {}, [evmAddress, isSignedIn]);
@@ -121,6 +124,7 @@ const AgentFiWalletConnector = ({
 
     try {
       const result = await verifyEmailOTP({ otp, flowId });
+      setVerifiedEmail(email); // Guardar email verificado
       setIsDialogOpen(false);
       resetForm();
     } catch (err) {
@@ -170,10 +174,24 @@ const AgentFiWalletConnector = ({
 
   useEffect(() => {
     if (isSignedIn && evmAddress === null) {
-      console.log("🆕 [Wallet] Creando wallet EOA para usuario...");
       createEvmEoaAccount();
     }
   }, [isSignedIn, evmAddress, createEvmEoaAccount]);
+
+  // Login con backend cuando el usuario está autenticado y tiene email y wallet
+  useEffect(() => {
+    if (isSignedIn && evmAddress && verifiedEmail) {
+      loginWithBackend({ email: verifiedEmail, wallet: evmAddress }).then(
+        (result) => {
+          if (typeof result === "string") {
+            setBackendError(""); // Login exitoso
+          } else {
+            setBackendError(result.error || "Backend error");
+          }
+        }
+      );
+    }
+  }, [isSignedIn, evmAddress, verifiedEmail]);
 
   if (!isSignedIn) {
     return (
@@ -282,6 +300,9 @@ const AgentFiWalletConnector = ({
 
   return (
     <div className="glass-intense px-4 py-2 rounded-full flex items-center gap-3">
+      {backendError && (
+        <p className="text-sm text-destructive">{backendError}</p>
+      )}
       <Wallet className="w-4 h-4 text-primary" />
 
       <button
