@@ -198,6 +198,20 @@ const Index = () => {
                 ))}
               </div>
 
+              {/* CTA Button */}
+              <div
+                className="pt-6 animate-fade-in"
+                style={{ animationDelay: "0.5s" }}
+              >
+                <Button
+                  size="lg"
+                  onClick={() => walletConnectorRef.current?.startSession()}
+                  className="w-full sm:w-auto px-12 py-6 text-lg font-semibold rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 transition-all duration-300 hover:scale-105 border-0"
+                >
+                  {t.cta}
+                </Button>
+              </div>
+
               {/* Subtle glow effect at bottom */}
               <div className="mt-8 text-center">
                 {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
