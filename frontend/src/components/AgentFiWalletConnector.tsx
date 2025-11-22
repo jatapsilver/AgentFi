@@ -1,4 +1,9 @@
-import { useState, useEffect } from "react";
+import React, {
+  useImperativeHandle,
+  forwardRef,
+  useState,
+  useEffect,
+} from "react";
 import { Wallet, LogOut, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,13 +24,19 @@ import {
   useCreateEvmEoaAccount,
 } from "@coinbase/cdp-hooks";
 
-interface AgentFiWalletConnectorProps {
-  language?: "en" | "es";
+export interface AgentFiWalletConnectorHandle {
+  startSession: () => void;
 }
 
-const AgentFiWalletConnector = ({
-  language = "en",
-}: AgentFiWalletConnectorProps) => {
+interface AgentFiWalletConnectorProps {
+  language?: "en" | "es";
+  autoOpen?: boolean;
+}
+
+const AgentFiWalletConnector = forwardRef<
+  AgentFiWalletConnectorHandle,
+  AgentFiWalletConnectorProps
+>(({ language = "en", autoOpen = false }, ref) => {
   const { isSignedIn } = useIsSignedIn();
 
   const evmAddressResult = useEvmAddress();
@@ -193,6 +204,12 @@ const AgentFiWalletConnector = ({
     }
   }, [isSignedIn, evmAddress, verifiedEmail]);
 
+  useImperativeHandle(ref, () => ({
+    startSession: () => {
+      setIsDialogOpen(true);
+    },
+  }));
+
   if (!isSignedIn) {
     return (
       <>
@@ -324,6 +341,6 @@ const AgentFiWalletConnector = ({
       </button>
     </div>
   );
-};
+});
 
 export default AgentFiWalletConnector;

@@ -1,11 +1,65 @@
 import { useState, useEffect } from "react";
 import { Moon, Sun, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Mic } from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import { ReactMic } from "react-mic";
 import AgentFiWalletConnector from "@/components/AgentFiWalletConnector";
+import React, { useRef } from "react";
+import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 
 const Index = () => {
-  const [isDark, setIsDark] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
+  const examplePrompts = React.useMemo(
+    () =>
+      language === "es"
+        ? [
+            "Compra 10 USDC",
+            "¿Cuál es mi balance?",
+            "¿Qué puedo hacer?",
+            "Envía 5 USDT a 0x...",
+            "Muéstrame mi historial de transacciones",
+          ]
+        : [
+            "Buy 10 USDC",
+            "What is my balance?",
+            "What can I do?",
+            "Send 5 USDT to 0x...",
+            "Show me my transaction history",
+          ],
+    [language]
+  );
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  useEffect(() => {
+    let typingTimeout: NodeJS.Timeout;
+    const currentPrompt = examplePrompts[promptIndex];
+    if (!isDeleting && displayedText.length < currentPrompt.length) {
+      typingTimeout = setTimeout(() => {
+        setDisplayedText(currentPrompt.slice(0, displayedText.length + 1));
+      }, 60);
+    } else if (!isDeleting && displayedText.length === currentPrompt.length) {
+      typingTimeout = setTimeout(() => setIsDeleting(true), 1200);
+    } else if (isDeleting && displayedText.length > 0) {
+      typingTimeout = setTimeout(() => {
+        setDisplayedText(currentPrompt.slice(0, displayedText.length - 1));
+      }, 40);
+    } else if (isDeleting && displayedText.length === 0) {
+      typingTimeout = setTimeout(() => {
+        setIsDeleting(false);
+        setPromptIndex((prev) => (prev + 1) % examplePrompts.length);
+      }, 400);
+    }
+    return () => clearTimeout(typingTimeout);
+  }, [displayedText, isDeleting, promptIndex, examplePrompts]);
+  const walletConnectorRef = useRef<AgentFiWalletConnectorHandle>(null);
+  const [isDark, setIsDark] = useState(true);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -69,8 +123,8 @@ const Index = () => {
 
       {/* Controls in top-right */}
       <div className="absolute top-6 right-6 flex items-center gap-3 z-20">
-        {/* Wallet Connector */}
-        <AgentFiWalletConnector language={language} />
+        {/* Wallet Connector, con ref */}
+        <AgentFiWalletConnector ref={walletConnectorRef} language={language} />
 
         {/* Language toggle */}
         <button
@@ -151,21 +205,91 @@ const Index = () => {
               >
                 <Button
                   size="lg"
-                  onClick={() => console.log("Get Started clicked")}
+                  onClick={() => walletConnectorRef.current?.startSession()}
                   className="w-full sm:w-auto px-12 py-6 text-lg font-semibold rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 transition-all duration-300 hover:scale-105 border-0"
                 >
                   {t.cta}
                 </Button>
               </div>
-            </div>
-          </div>
 
-          {/* Subtle glow effect at bottom */}
-          <div className="mt-8 text-center">
-            <div className="inline-block glass px-6 py-3 rounded-full">
-              <p className="text-sm text-muted-foreground">
-                {language === "en" ? "Powered by AI" : "Impulsado por IA"}
-              </p>
+              {/* Subtle glow effect at bottom */}
+              <div className="mt-8 text-center">
+                {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
+                <div className="fixed bottom-8 right-8 z-50">
+                  <Button
+                    size="icon"
+                    className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
+                    onClick={() => setIsChatOpen(true)}
+                    aria-label={language === "en" ? "Open Chat" : "Abrir Chat"}
+                  >
+                    <MessageCircle className="w-7 h-7" />
+                  </Button>
+                </div>
+
+                {/* Modal de chat */}
+                <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                  <DialogContent className="max-w-lg">
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-muted rounded-lg p-4 min-h-[120px] text-muted-foreground">
+                        {/* Mensajes del chat aparecerán aquí */}
+                        <span className="italic opacity-60">
+                          {language === "en"
+                            ? "Chat history will appear here."
+                            : "El historial del chat aparecerá aquí."}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          placeholder={examplePrompts[promptIndex]}
+                          className="flex-1 px-4 py-2 rounded-lg border border-muted focus:outline-none text-black"
+                        />
+
+                        <Button
+                          size="sm"
+                          className="rounded-full px-4"
+                          onClick={() => {
+                            /* Aquí se enviaría el mensaje al agente */ setChatInput(
+                              ""
+                            );
+                          }}
+                        >
+                          {language === "en" ? "Send" : "Enviar"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={isRecording ? "default" : "outline"}
+                          className={`rounded-full px-2 ${isRecording ? "bg-red-500 text-white" : ""}`}
+                          onClick={() => setIsRecording((rec) => !rec)}
+                        >
+                          <Mic className="w-5 h-5" />
+                        </Button>
+                        <ReactMic
+                          record={isRecording}
+                          className="hidden"
+                          onStop={(recordedData) => {
+                            setAudioBlob(recordedData.blob);
+                            setIsRecording(false);
+                            // Aquí podrías enviar el audioBlob al agente
+                          }}
+                          mimeType="audio/webm"
+                          strokeColor="#000000"
+                          backgroundColor="#fff"
+                        />
+                      </div>
+                      {/* Aquí se mostrarían los mensajes del chat */}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <div className="inline-block glass px-6 py-3 rounded-full min-h-[2rem]">
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {displayedText}
+                    <span className="animate-pulse">|</span>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
