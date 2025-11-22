@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { OneInchService } from './oneinch.service';
 import { GetQuoteDto } from './dto/get-quote.dto';
 import { BuildSwapTxDto } from './dto/build-swap-tx.dto';
+import { SimpleQuoteDto } from './dto/simple-quote.dto';
 
 @ApiTags('1inch Integration')
 @Controller('oneinch')
@@ -35,6 +36,20 @@ export class OneInchController {
   getQuote(@Query() dto: GetQuoteDto) {
     const userId: string | undefined = undefined;
     return this.oneInchService.getQuote(dto, userId);
+  }
+
+  @Get('quote/simple')
+  @ApiOperation({
+    summary: 'Get simple quote by symbols',
+    description: 'Resolve tokens by symbol & network and return enriched quote',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Simple quote retrieved successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid parameters' })
+  getQuoteSimple(@Query() dto: SimpleQuoteDto) {
+    return this.oneInchService.getQuoteSimple(dto);
   }
 
   @Post('tx')
