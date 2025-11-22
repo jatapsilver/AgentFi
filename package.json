@@ -1,0 +1,31 @@
+{
+  "name": "my-defi-edu-app",
+  "version": "1.0.0",
+  "description": "Plataforma educativa de DeFi - Hackathon Project",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky",
+    "commit": "git add . && git commit",
+    "backend:dev": "cd backend && npm run start:dev",
+    "backend:build": "cd backend && npm run build",
+    "backend:test": "cd backend && npm test",
+    "docker:up": "cd backend && docker-compose up -d",
+    "docker:down": "cd backend && docker-compose down",
+    "docker:logs": "cd backend && docker-compose logs -f"
+  },
+  "keywords": [
+    "defi",
+    "education",
+    "blockchain",
+    "nestjs",
+    "hackathon"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  }
+}
