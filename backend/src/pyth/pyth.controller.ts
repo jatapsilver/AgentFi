@@ -90,11 +90,10 @@ export class PythController {
   @ApiQuery({
     name: 'feedKeys',
     required: true,
-    isArray: true,
-    enum: ['ETH_USD', 'BTC_USD', 'SOL_USD', 'USDC_USD'],
+    type: String,
     description:
-      'Array of feed keys to fetch. Use multiple feedKeys parameters: ?feedKeys=ETH_USD&feedKeys=BTC_USD',
-    example: ['ETH_USD', 'BTC_USD'],
+      'Comma-separated feed keys to fetch. Example: ETH_USD,BTC_USD,SOL_USD',
+    example: 'ETH_USD,BTC_USD',
   })
   @ApiQuery({
     name: 'network',
@@ -154,16 +153,17 @@ export class PythController {
     },
   })
   async getPrices(@Query() dto: GetPythMultiPriceDto) {
+    const parsedKeys = dto.getParsedFeedKeys();
     if (dto.mode === 'read-only') {
       // Read-only mode for multiple feeds
       const results = await Promise.all(
-        dto.feedKeys.map((key) =>
+        parsedKeys.map((key) =>
           this.pythService.getStoredSinglePrice(key, dto.network),
         ),
       );
       return { results, mode: 'read-only' };
     }
     // Default: batch update + consume
-    return this.pythService.updateAndGetMultiple(dto.feedKeys, dto.network);
+    return this.pythService.updateAndGetMultiple(parsedKeys, dto.network);
   }
 }
