@@ -12,6 +12,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - app-net
 
   db:
     image: postgres:16-alpine
@@ -32,3 +34,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    external: true

@@ -19,3 +19,9 @@ services:
       - ./n8n-logs:/var/log/n8n
     env_file:
       - .env
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    external: true
