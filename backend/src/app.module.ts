@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { OneInchModule } from './oneinch/oneinch.module';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
@@ -35,6 +36,7 @@ import { envValidationSchema } from './config/env.validation';
         retryDelay: 5000,
       }),
     }),
+    OneInchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
