@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Mic } from "lucide-react";
 import { MessageCircle } from "lucide-react";
+import { ReactMic } from "react-mic";
 import AgentFiWalletConnector from "@/components/AgentFiWalletConnector";
 import React, { useRef } from "react";
 import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 
 const Index = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
@@ -195,87 +198,83 @@ const Index = () => {
                 ))}
               </div>
 
-              {/* CTA Button */}
-              <div
-                className="pt-6 animate-fade-in"
-                style={{ animationDelay: "0.5s" }}
-              >
-                <Button
-                  size="lg"
-                  onClick={() => walletConnectorRef.current?.startSession()}
-                  className="w-full sm:w-auto px-12 py-6 text-lg font-semibold rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 transition-all duration-300 hover:scale-105 border-0"
-                >
-                  {t.cta}
-                </Button>
-              </div>
-            </div>
+              {/* Subtle glow effect at bottom */}
+              <div className="mt-8 text-center">
+                {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
+                <div className="fixed bottom-8 right-8 z-50">
+                  <Button
+                    size="icon"
+                    className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
+                    onClick={() => setIsChatOpen(true)}
+                    aria-label={language === "en" ? "Open Chat" : "Abrir Chat"}
+                  >
+                    <MessageCircle className="w-7 h-7" />
+                  </Button>
+                </div>
 
-            {/* Subtle glow effect at bottom */}
-            <div className="mt-8 text-center">
-              {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
-              <div className="fixed bottom-8 right-8 z-50">
-                <Button
-                  size="icon"
-                  className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
-                  onClick={() => setIsChatOpen(true)}
-                  aria-label={language === "en" ? "Open Chat" : "Abrir Chat"}
-                >
-                  <MessageCircle className="w-7 h-7" />
-                </Button>
-              </div>
+                {/* Modal de chat */}
+                <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                  <DialogContent className="max-w-lg">
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-muted rounded-lg p-4 min-h-[120px] text-muted-foreground">
+                        {/* Mensajes del chat aparecerán aquí */}
+                        <span className="italic opacity-60">
+                          {language === "en"
+                            ? "Chat history will appear here."
+                            : "El historial del chat aparecerá aquí."}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          placeholder={examplePrompts[promptIndex]}
+                          className="flex-1 px-4 py-2 rounded-lg border border-muted focus:outline-none text-black"
+                        />
 
-              {/* Modal de chat */}
-              <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                <DialogContent className="max-w-lg">
-                  <div className="flex flex-col gap-4">
-                    <div className="bg-muted rounded-lg p-4 min-h-[120px] text-muted-foreground">
-                      {/* Mensajes del chat aparecerán aquí */}
-                      <span className="italic opacity-60">
-                        {language === "en"
-                          ? "Chat history will appear here."
-                          : "El historial del chat aparecerá aquí."}
-                      </span>
+                        <Button
+                          size="sm"
+                          className="rounded-full px-4"
+                          onClick={() => {
+                            /* Aquí se enviaría el mensaje al agente */ setChatInput(
+                              ""
+                            );
+                          }}
+                        >
+                          {language === "en" ? "Send" : "Enviar"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={isRecording ? "default" : "outline"}
+                          className={`rounded-full px-2 ${isRecording ? "bg-red-500 text-white" : ""}`}
+                          onClick={() => setIsRecording((rec) => !rec)}
+                        >
+                          <Mic className="w-5 h-5" />
+                        </Button>
+                        <ReactMic
+                          record={isRecording}
+                          className="hidden"
+                          onStop={(recordedData) => {
+                            setAudioBlob(recordedData.blob);
+                            setIsRecording(false);
+                            // Aquí podrías enviar el audioBlob al agente
+                          }}
+                          mimeType="audio/webm"
+                          strokeColor="#000000"
+                          backgroundColor="#fff"
+                        />
+                      </div>
+                      {/* Aquí se mostrarían los mensajes del chat */}
                     </div>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder={examplePrompts[promptIndex]}
-                        className="flex-1 px-4 py-2 rounded-lg border border-muted focus:outline-none text-black"
-                      />
-
-                      <Button
-                        size="sm"
-                        className="rounded-full px-4"
-                        onClick={() => {
-                          /* Aquí se enviaría el mensaje al agente */ setChatInput(
-                            ""
-                          );
-                        }}
-                      >
-                        {language === "en" ? "Send" : "Enviar"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full px-2"
-                        onClick={() => {
-                          /* Aquí se grabaría y enviaría la nota de voz */
-                        }}
-                      >
-                        <Mic className="w-5 h-5" />
-                      </Button>
-                    </div>
-                    {/* Aquí se mostrarían los mensajes del chat */}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <div className="inline-block glass px-6 py-3 rounded-full min-h-[2rem]">
-                <span className="text-sm text-muted-foreground font-mono">
-                  {displayedText}
-                  <span className="animate-pulse">|</span>
-                </span>
+                  </DialogContent>
+                </Dialog>
+                <div className="inline-block glass px-6 py-3 rounded-full min-h-[2rem]">
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {displayedText}
+                    <span className="animate-pulse">|</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
