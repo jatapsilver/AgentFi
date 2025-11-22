@@ -80,6 +80,15 @@ docker-data
 *.sw?
 
 # ----------------------
+# N8N - Exclude runtime data
+# ----------------------
+ai-agents/n8n-data/database.sqlite
+ai-agents/n8n-data/database.sqlite-shm
+ai-agents/n8n-data/database.sqlite-wal
+ai-agents/n8n-data/crash.journal
+ai-agents/n8n-logs/
+
+# ----------------------
 # Frontend (Vite / React / Tailwind)
 # ----------------------
 frontend/node_modules
