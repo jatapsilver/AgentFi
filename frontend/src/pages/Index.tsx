@@ -6,9 +6,52 @@ import React, { useRef } from "react";
 import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 
 const Index = () => {
+  const [language, setLanguage] = useState<"en" | "es">("en");
+  const examplePrompts = React.useMemo(
+    () =>
+      language === "es"
+        ? [
+            "Compra 10 USDC",
+            "¿Cuál es mi balance?",
+            "¿Qué puedo hacer?",
+            "Envía 5 USDT a 0x...",
+            "Muéstrame mi historial de transacciones",
+          ]
+        : [
+            "Buy 10 USDC",
+            "What is my balance?",
+            "What can I do?",
+            "Send 5 USDT to 0x...",
+            "Show me my transaction history",
+          ],
+    [language]
+  );
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  useEffect(() => {
+    let typingTimeout: NodeJS.Timeout;
+    const currentPrompt = examplePrompts[promptIndex];
+    if (!isDeleting && displayedText.length < currentPrompt.length) {
+      typingTimeout = setTimeout(() => {
+        setDisplayedText(currentPrompt.slice(0, displayedText.length + 1));
+      }, 60);
+    } else if (!isDeleting && displayedText.length === currentPrompt.length) {
+      typingTimeout = setTimeout(() => setIsDeleting(true), 1200);
+    } else if (isDeleting && displayedText.length > 0) {
+      typingTimeout = setTimeout(() => {
+        setDisplayedText(currentPrompt.slice(0, displayedText.length - 1));
+      }, 40);
+    } else if (isDeleting && displayedText.length === 0) {
+      typingTimeout = setTimeout(() => {
+        setIsDeleting(false);
+        setPromptIndex((prev) => (prev + 1) % examplePrompts.length);
+      }, 400);
+    }
+    return () => clearTimeout(typingTimeout);
+  }, [displayedText, isDeleting, promptIndex, examplePrompts]);
   const walletConnectorRef = useRef<AgentFiWalletConnectorHandle>(null);
   const [isDark, setIsDark] = useState(true);
-  const [language, setLanguage] = useState<"en" | "es">("en");
 
   // Initialize theme on mount
   useEffect(() => {
@@ -164,10 +207,11 @@ const Index = () => {
 
             {/* Subtle glow effect at bottom */}
             <div className="mt-8 text-center">
-              <div className="inline-block glass px-6 py-3 rounded-full">
-                <p className="text-sm text-muted-foreground">
-                  {language === "en" ? "Powered by AI" : "Impulsado por IA"}
-                </p>
+              <div className="inline-block glass px-6 py-3 rounded-full min-h-[2rem]">
+                <span className="text-sm text-muted-foreground font-mono">
+                  {displayedText}
+                  <span className="animate-pulse">|</span>
+                </span>
               </div>
             </div>
           </div>
