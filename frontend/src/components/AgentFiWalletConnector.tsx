@@ -184,6 +184,77 @@ const AgentFiWalletConnector = forwardRef<
     }
   };
 
+  // Dev helper: detect a provider-like object on window and expose it for debugging/testing
+  const handleExposeProvider = () => {
+    const win = window as any;
+    const candidates: Array<{ key: string; obj: any }> = [];
+
+    // Known slots to check
+    if (win.cdp && win.cdp.embeddedWallet) candidates.push({ key: "cdp.embeddedWallet", obj: win.cdp.embeddedWallet });
+    if (win.coinbaseWallet && win.coinbaseWallet.provider) candidates.push({ key: "coinbaseWallet.provider", obj: win.coinbaseWallet.provider });
+    if (win.__AGENTFI_EMBEDDED_WALLET) candidates.push({ key: "__AGENTFI_EMBEDDED_WALLET", obj: win.__AGENTFI_EMBEDDED_WALLET });
+    if (win.ethereum) candidates.push({ key: "ethereum", obj: win.ethereum });
+
+    // Generic scan: find any window prop that looks like a provider (has request function)
+    try {
+      for (const k of Object.keys(win)) {
+        try {
+          const v = win[k];
+          if (v && typeof v.request === "function") {
+            // Avoid re-adding known ethereum (MetaMask) unless no other candidate
+            if (k === "ethereum" && candidates.length > 0) continue;
+            candidates.push({ key: k, obj: v });
+          }
+        } catch (_) {
+          // ignore property access errors
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    // Choose first candidate that is not MetaMask if possible
+    let chosen = candidates.find((c) => c.key !== "ethereum") || candidates[0];
+    if (chosen && chosen.obj) {
+      win.__AGENTFI_EMBEDDED_WALLET = chosen.obj;
+      alert(`Exposed provider from window.${chosen.key} as __AGENTFI_EMBEDDED_WALLET`);
+    } else {
+      alert("No provider-like object found on window to expose.");
+    }
+  };
+
+  // Debug UI: show window.cdp and provider info so user can copy without console
+  const [debugOpen, setDebugOpen] = useState(false);
+  const buildDebugInfo = () => {
+    try {
+      const win = window as any;
+      const summary: any = {
+        hasWindowCdp: !!win.cdp,
+        cdpKeys: win.cdp ? Object.keys(win.cdp) : null,
+        hasEmbeddedWallet: !!(win.cdp && win.cdp.embeddedWallet),
+        embeddedWalletKeys: win.cdp?.embeddedWallet ? Object.keys(win.cdp.embeddedWallet) : null,
+        embeddedWalletHasRequest: typeof win.cdp?.embeddedWallet?.request === "function",
+        hasExposedAgentfi: !!win.__AGENTFI_EMBEDDED_WALLET,
+        exposedAgentfiKeys: win.__AGENTFI_EMBEDDED_WALLET ? Object.keys(win.__AGENTFI_EMBEDDED_WALLET) : null,
+        hasWindowEthereum: !!win.ethereum,
+        ethereumHasRequest: typeof win.ethereum?.request === "function",
+      };
+      return JSON.stringify(summary, null, 2);
+    } catch (e) {
+      return `ERROR: ${String(e)}`;
+    }
+  };
+
+  const handleCopyDebug = async () => {
+    try {
+      const txt = buildDebugInfo();
+      await navigator.clipboard.writeText(txt);
+      alert("Debug info copied to clipboard");
+    } catch (e) {
+      alert("Failed to copy debug info: " + String(e));
+    }
+  };
+
   // Evaluar condición de conexión
 
   useEffect(() => {
@@ -191,6 +262,22 @@ const AgentFiWalletConnector = forwardRef<
       createEvmEoaAccount();
     }
   }, [isSignedIn, evmAddress, createEvmEoaAccount]);
+
+  // Auto-expose embedded wallet provider when CDP exposes it and the user is signed in.
+  useEffect(() => {
+    try {
+      const win = window as any;
+      if (isSignedIn && win?.cdp?.embeddedWallet) {
+        // Only set if not already set or if it's a different object
+        if (!win.__AGENTFI_EMBEDDED_WALLET || win.__AGENTFI_EMBEDDED_WALLET !== win.cdp.embeddedWallet) {
+          win.__AGENTFI_EMBEDDED_WALLET = win.cdp.embeddedWallet;
+          // no alert here to avoid spamming UI; the Chatbot modal shows detection
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }, [isSignedIn, evmAddress]);
 
   // Login con backend cuando el usuario está autenticado y tiene email y wallet
   useEffect(() => {
@@ -272,6 +359,13 @@ const AgentFiWalletConnector = forwardRef<
             <DialogHeader>
               <DialogTitle>{t.dialogTitle}</DialogTitle>
               <DialogDescription>{t.dialogDescription}</DialogDescription>
+        <button
+          onClick={() => setDebugOpen((v) => !v)}
+          className="ml-2 text-xs px-2 py-1 bg-muted rounded-md hover:bg-muted/80"
+          title="Show provider debug info"
+        >
+          {debugOpen ? "Hide Debug" : "Show Debug"}
+        </button>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
@@ -384,6 +478,31 @@ const AgentFiWalletConnector = forwardRef<
       >
         <LogOut className="w-4 h-4" />
       </button>
+      <button
+        onClick={handleExposeProvider}
+        className="ml-2 text-xs px-2 py-1 bg-muted rounded-md hover:bg-muted/80"
+        title="Expose provider on window for testing"
+      >
+        Expose Provider
+      </button>
+      <button
+        onClick={() => setDebugOpen((v) => !v)}
+        className="ml-2 text-xs px-2 py-1 bg-muted rounded-md hover:bg-muted/80"
+        title="Show provider debug info"
+      >
+        {debugOpen ? "Hide Debug" : "Show Debug"}
+      </button>
+      {debugOpen && (
+        <div className="w-full mt-2 p-3 rounded-md bg-card border border-border/60 text-xs">
+          <pre className="whitespace-pre-wrap break-words max-h-48 overflow-auto">{buildDebugInfo()}</pre>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" onClick={handleCopyDebug}>Copy Debug</Button>
+            <Button size="sm" variant="ghost" onClick={() => {
+              try { delete (window as any).__AGENTFI_EMBEDDED_WALLET; alert('Removed __AGENTFI_EMBEDDED_WALLET'); } catch(e) { alert('Failed to remove: '+String(e)); }
+            }}>Remove Exposed</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
