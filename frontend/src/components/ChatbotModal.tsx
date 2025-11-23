@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Mic, StopCircle, Image as ImageIcon, X } from "lucide-react";
@@ -19,14 +24,18 @@ interface Message {
   timestamp: Date;
 }
 
-export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps) => {
+export const ChatbotModal = ({
+  open,
+  onOpenChange,
+  language,
+}: ChatbotModalProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -68,14 +77,14 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       // Setup audio context for visualization
       audioContextRef.current = new AudioContext();
       analyserRef.current = audioContextRef.current.createAnalyser();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       analyserRef.current.fftSize = 256;
-      
+
       // Start visualization
       visualizeAudio();
 
@@ -90,8 +99,10 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
       mediaRecorderRef.current.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
         // Here you would process the audio
-        sendMessage("🎤 " + (language === "en" ? "Audio message" : "Mensaje de audio"));
-        stream.getTracks().forEach(track => track.stop());
+        sendMessage(
+          "🎤 " + (language === "en" ? "Audio message" : "Mensaje de audio")
+        );
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorderRef.current.start();
@@ -138,21 +149,38 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
     if (!analyserRef.current) return;
 
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    
+
     const updateLevel = () => {
       if (!analyserRef.current) return;
-      
+
       analyserRef.current.getByteFrequencyData(dataArray);
       const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
       setAudioLevel(average);
-      
+
       animationFrameRef.current = requestAnimationFrame(updateLevel);
     };
 
     updateLevel();
   };
 
-  const sendMessage = (text: string, image?: string) => {
+  // URL de tu webhook de n8n
+  const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL as string;
+
+  // Enviar datos al webhook
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sendToWebhook = async (payload: any) => {
+    try {
+      await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.error("Error enviando al webhook:", error);
+    }
+  };
+
+  const sendMessage = async (text: string, image?: string) => {
     if (!text.trim() && !image) return;
 
     const newMessage: Message = {
@@ -167,14 +195,22 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
     setInputValue("");
     setSelectedImage(null);
 
+    // Enviar al webhook
+    await sendToWebhook({
+      text,
+      image,
+      timestamp: newMessage.timestamp,
+    });
+
     // Simulate bot response
     setTimeout(() => {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "bot",
-        content: language === "en" 
-          ? "I'm processing your request..." 
-          : "Estoy procesando tu solicitud...",
+        content:
+          language === "en"
+            ? "I'm processing your request..."
+            : "Estoy procesando tu solicitud...",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
@@ -202,7 +238,9 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
       <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0 gap-0 rounded-3xl bg-background border border-border/60 shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b border-border/60 bg-background/95 backdrop-blur">
-          <DialogTitle className="text-2xl font-bold text-gradient">{t.title}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-gradient">
+            {t.title}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Messages Area */}
@@ -210,13 +248,13 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-center">
-                {language === "en" 
-                  ? "Start a conversation with AgentFi" 
+                {language === "en"
+                  ? "Start a conversation with AgentFi"
                   : "Inicia una conversación con AgentFi"}
               </p>
             </div>
           )}
-          
+
           {messages.map((message) => (
             <div
               key={message.id}
@@ -269,7 +307,9 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
           {isRecording && (
             <div className="rounded-lg p-4 space-y-2 bg-muted border border-border/60">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-primary">{t.recording}</span>
+                <span className="text-sm font-medium text-primary">
+                  {t.recording}
+                </span>
                 <span className="text-sm font-mono text-muted-foreground">
                   {recordingTime}s / 15s
                 </span>
@@ -297,7 +337,7 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
               accept="image/*"
               className="hidden"
             />
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -315,7 +355,9 @@ export const ChatbotModal = ({ open, onOpenChange, language }: ChatbotModalProps
               onClick={isRecording ? stopRecording : startRecording}
               className={cn(
                 "hover:bg-muted",
-                isRecording ? "text-destructive hover:text-destructive" : "hover:text-primary"
+                isRecording
+                  ? "text-destructive hover:text-destructive"
+                  : "hover:text-primary"
               )}
             >
               {isRecording ? (
