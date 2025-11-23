@@ -342,7 +342,7 @@ export const ChatbotModal = ({
         {paragraphs.map((p, idx) => {
           const parts = p.split(/\n/);
           return (
-            <p key={idx} className="text-sm leading-relaxed break-words">
+            <p key={idx} className="text-sm leading-relaxed break-words whitespace-pre-wrap">
               {parts.map((line, i) => (
                 <>
                   {line}
@@ -363,7 +363,8 @@ export const ChatbotModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:max-w-[680px] md:max-w-[760px] h-[80vh] flex flex-col p-0 gap-0 rounded-3xl bg-background border border-border/60 shadow-2xl">
+      {/* Increased width ~30% on sm/md breakpoints */}
+      <DialogContent className="w-full sm:max-w-[884px] md:max-w-[988px] h-[80vh] flex flex-col p-0 gap-0 rounded-3xl bg-background border border-border/60 shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b border-border/60 bg-background/95 backdrop-blur">
           <DialogTitle className="text-2xl font-bold text-gradient">
@@ -393,13 +394,14 @@ export const ChatbotModal = ({
             >
               <div
                 className={cn(
-                  "max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3",
+                  // Wider bubbles (+30%) with full responsive wrapping
+                  "w-full max-w-[95%] md:max-w-[90%] rounded-2xl px-5 py-4",
                   message.type === "user"
                     ? "bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-md"
                     : "bg-muted text-foreground border border-border/60 shadow-sm"
                 )}
               >
-                <div className="space-y-2 overflow-hidden break-words">
+                <div className="space-y-2 overflow-hidden break-words whitespace-pre-wrap">
                   {formatContent(message.content)}
                 </div>
               </div>
