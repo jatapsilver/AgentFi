@@ -204,6 +204,48 @@ const AgentFiWalletConnector = forwardRef<
     }
   }, [isSignedIn, evmAddress, verifiedEmail]);
 
+  // --- JWT Expiration Handling ---
+  const GRACE_SECONDS = Number(import.meta.env.VITE_JWT_EXP_GRACE || 30);
+
+  const checkTokenExpiry = () => {
+    try {
+      const token = sessionStorage.getItem("auth_token");
+      if (!token) return;
+      const parts = token.split(".");
+      if (parts.length !== 3) throw new Error("Invalid JWT format");
+      const payload = JSON.parse(atob(parts[1]));
+      const exp = payload.exp; // seconds
+      if (!exp) return;
+      const now = Math.floor(Date.now() / 1000);
+      if (exp - GRACE_SECONDS <= now) {
+        // Expired or about to expire: cleanup and redirect to root
+        sessionStorage.removeItem("auth_token");
+        performSignOut().catch(() => {});
+        // Forzar retorno a página inicial para reconectar wallet
+        if (window.location.pathname !== "/") {
+          window.location.href = "/";
+        } else {
+          // Si ya está en inicio, refrescar estado UI
+          setIsDialogOpen(false);
+        }
+      }
+    } catch (_) {
+      // Si hay error de parseo, asumir inválido y limpiar
+      sessionStorage.removeItem("auth_token");
+      performSignOut().catch(() => {});
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+  };
+
+  // Intervalo periódico para validar expiración
+  useEffect(() => {
+    const id = setInterval(checkTokenExpiry, 15000); // cada 15s
+    checkTokenExpiry(); // verificación inicial
+    return () => clearInterval(id);
+  }, [isSignedIn]);
+
   useImperativeHandle(ref, () => ({
     startSession: () => {
       setIsDialogOpen(true);

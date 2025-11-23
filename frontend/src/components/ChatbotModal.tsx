@@ -38,6 +38,37 @@ export const ChatbotModal = ({
   // Token gating: do not render chatbot if user lacks auth token
   const authToken =
     typeof window !== "undefined" ? sessionStorage.getItem("auth_token") : null;
+  // Helper para validar expiración del JWT y cerrar modal si expiró
+  const isJwtExpired = (token: string | null) => {
+    if (!token) return true;
+    try {
+      const [_, payload] = token.split(".");
+      const data = JSON.parse(atob(payload));
+      const exp = data.exp; // segundos
+      if (!exp) return true;
+      const now = Math.floor(Date.now() / 1000);
+      const grace = Number((import.meta as any)?.env?.VITE_JWT_EXP_GRACE || 30);
+      return exp - grace <= now;
+    } catch {
+      return true;
+    }
+  };
+
+  useEffect(() => {
+    const check = () => {
+      const token = sessionStorage.getItem("auth_token");
+      if (isJwtExpired(token)) {
+        sessionStorage.removeItem("auth_token");
+        if (open) onOpenChange(false);
+        if (window.location.pathname !== "/") {
+          window.location.href = "/";
+        }
+      }
+    };
+    const id = setInterval(check, 15000);
+    check();
+    return () => clearInterval(id);
+  }, [open, onOpenChange]);
   const [isTokenChecked, setIsTokenChecked] = useState(false);
   useEffect(() => {
     setIsTokenChecked(true);
@@ -342,7 +373,10 @@ export const ChatbotModal = ({
         {paragraphs.map((p, idx) => {
           const parts = p.split(/\n/);
           return (
-            <p key={idx} className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+            <p
+              key={idx}
+              className="text-sm leading-relaxed break-words whitespace-pre-wrap"
+            >
               {parts.map((line, i) => (
                 <>
                   {line}
