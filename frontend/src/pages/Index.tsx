@@ -217,16 +217,28 @@ const Index = () => {
               {/* Subtle glow effect at bottom */}
               <div className="mt-8 text-center">
                 {/* Botón flotante para abrir el chat modal en la esquina inferior derecha */}
-                <div className="fixed bottom-8 right-8 z-50">
-                  <Button
-                    size="icon"
-                    className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
-                    onClick={() => setIsChatOpen(true)}
-                    aria-label={language === "en" ? "Open Chat" : "Abrir Chat"}
-                  >
-                    <MessageCircle className="w-7 h-7" />
-                  </Button>
-                </div>
+                {/* Chat trigger gated by auth token presence */}
+                {(() => {
+                  const token =
+                    typeof window !== "undefined"
+                      ? sessionStorage.getItem("auth_token")
+                      : null;
+                  if (!token) return null;
+                  return (
+                    <div className="fixed bottom-8 right-8 z-50">
+                      <Button
+                        size="icon"
+                        className="rounded-full bg-primary text-white shadow-lg w-14 h-14 flex items-center justify-center hover:bg-primary/80"
+                        onClick={() => setIsChatOpen(true)}
+                        aria-label={
+                          language === "en" ? "Open Chat" : "Abrir Chat"
+                        }
+                      >
+                        <MessageCircle className="w-7 h-7" />
+                      </Button>
+                    </div>
+                  );
+                })()}
 
                 {/* Modal de chat */}
                 <ChatbotModal
