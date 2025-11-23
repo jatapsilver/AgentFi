@@ -4,14 +4,28 @@ import {
   Controller,
   Get,
   Query,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PythService } from './pyth.service';
 import { GetPythPriceDto } from './dto/get-pyth-price.dto';
 import { GetPythMultiPriceDto } from './dto/get-pyth-multi-price.dto';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RolesEnum } from 'src/common/enums/roles.enum';
 
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(RolesEnum.USER)
+@ApiBearerAuth()
 @ApiTags('Pyth Oracle')
 @Controller('pyth')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))

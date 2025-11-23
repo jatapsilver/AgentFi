@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Query,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -14,20 +15,29 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { OneInchService } from './oneinch.service';
 import { GetQuoteDto } from './dto/get-quote.dto';
 import { BuildSwapTxDto } from './dto/build-swap-tx.dto';
 import { SimpleQuoteDto } from './dto/simple-quote.dto';
 import { SimpleSwapTxDto } from './dto/simple-swap-tx.dto';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RolesEnum } from 'src/common/enums/roles.enum';
 
+@UseGuards(AuthGuard, RolesGuard)
 @ApiTags('1inch Integration')
+@ApiBearerAuth()
 @Controller('oneinch')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class OneInchController {
   constructor(private readonly oneInchService: OneInchService) {}
 
+  @Roles(RolesEnum.USER)
   @Get('quote')
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get swap quote (addresses)',
     description:
@@ -43,6 +53,7 @@ export class OneInchController {
     return this.oneInchService.getQuote(dto);
   }
 
+  @Roles(RolesEnum.USER)
   @Get('quote/simple')
   @ApiOperation({
     summary: '🔥 Get quote by symbols (RECOMMENDED FOR AGENTS)',
@@ -115,6 +126,7 @@ export class OneInchController {
     return this.oneInchService.getQuoteSimple(dto);
   }
 
+  @Roles(RolesEnum.USER)
   @Post('tx')
   @ApiOperation({
     summary: 'Build swap transaction (addresses)',
@@ -131,6 +143,7 @@ export class OneInchController {
     return this.oneInchService.buildSwapTx(dto);
   }
 
+  @Roles(RolesEnum.USER)
   @Post('tx/simple')
   @ApiOperation({
     summary: '🔥 Build swap transaction by symbols (RECOMMENDED FOR AGENTS)',
@@ -176,6 +189,7 @@ export class OneInchController {
     return this.oneInchService.buildSwapTxSimple(dto);
   }
 
+  @Roles(RolesEnum.USER)
   @Get('balances/:address')
   @ApiOperation({
     summary: '🔥 Get wallet token balances (RECOMMENDED FOR AGENTS)',
@@ -215,6 +229,7 @@ export class OneInchController {
     return this.oneInchService.getWalletBalances(address, network);
   }
 
+  @Roles(RolesEnum.USER)
   @Get('health')
   @ApiOperation({
     summary: 'Health check',
@@ -225,6 +240,7 @@ export class OneInchController {
     return this.oneInchService.healthCheck();
   }
 
+  @Roles(RolesEnum.USER)
   @Get('logs')
   @ApiOperation({
     summary: 'Get quote logs',
@@ -235,6 +251,7 @@ export class OneInchController {
     return this.oneInchService.getQuoteLogs();
   }
 
+  @Roles(RolesEnum.USER)
   @Get('logs/:id')
   @ApiOperation({
     summary: 'Get quote log by ID',
