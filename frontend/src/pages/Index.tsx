@@ -9,6 +9,7 @@ import AgentFiWalletConnector from "@/components/AgentFiWalletConnector";
 import React, { useRef } from "react";
 import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 import { ChatbotModal } from "@/components/ChatbotModal";
+import { QuoteLogsCard } from "@/components/QuoteLogsCard";
 
 const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -255,6 +256,8 @@ const Index = () => {
               </div>
             </div>
           </div>
+          {/* Card de logs de cotización debajo de todo */}
+          <QuoteLogsCard lang={language} />
         </div>
       </main>
     </div>
