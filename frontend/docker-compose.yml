@@ -9,7 +9,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - app-front
+      - app-net
 networks:
-  app-front:
-    driver: bridge
+  app-net:
+    external: true

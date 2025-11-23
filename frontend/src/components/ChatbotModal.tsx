@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Mic, StopCircle, Image as ImageIcon, X } from "lucide-react";
+import { Send, Mic, StopCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatbotModalProps {
@@ -20,7 +20,6 @@ interface Message {
   id: string;
   type: "user" | "bot";
   content: string;
-  image?: string;
   timestamp: Date;
 }
 
@@ -33,7 +32,6 @@ export const ChatbotModal = ({
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -41,7 +39,6 @@ export const ChatbotModal = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const content = {
     en: {
@@ -49,7 +46,6 @@ export const ChatbotModal = ({
       placeholder: "Type your message...",
       send: "Send",
       recording: "Recording",
-      selectImage: "Select image",
       maxTime: "Max 15s",
     },
     es: {
@@ -57,7 +53,6 @@ export const ChatbotModal = ({
       placeholder: "Escribe tu mensaje...",
       send: "Enviar",
       recording: "Grabando",
-      selectImage: "Seleccionar imagen",
       maxTime: "Máx 15s",
     },
   };
@@ -96,12 +91,22 @@ export const ChatbotModal = ({
         audioChunks.push(event.data);
       };
 
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        // Here you would process the audio
-        sendMessage(
-          "🎤 " + (language === "en" ? "Audio message" : "Mensaje de audio")
-        );
+
+        // Send audio to webhook
+        await sendToWebhook("audio", audioBlob);
+
+        // Add message to chat
+        const audioMessage: Message = {
+          id: Date.now().toString(),
+          type: "user",
+          content:
+            "🎤 " + (language === "en" ? "Audio message" : "Mensaje de audio"),
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, audioMessage]);
+
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -166,41 +171,57 @@ export const ChatbotModal = ({
   // URL de tu webhook de n8n
   const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL as string;
 
-  // Enviar datos al webhook
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sendToWebhook = async (payload: any) => {
+  // Enviar datos al webhook (audio o texto)
+  const sendToWebhook = async (
+    type: "text" | "audio",
+    content: string | Blob
+  ) => {
     try {
+      const token = sessionStorage.getItem("auth_token");
+      const formData = new FormData();
+
+      // Add type
+      formData.append("type", type);
+
+      // Add content based on type
+      if (type === "audio" && content instanceof Blob) {
+        formData.append("audio", content, `audio_${Date.now()}.webm`);
+      } else if (type === "text" && typeof content === "string") {
+        formData.append("text", content);
+      }
+
+      // Add token if available
+      if (token) {
+        formData.append("token", token);
+      }
+
+      // Add timestamp
+      formData.append("timestamp", new Date().toISOString());
+
       await fetch(WEBHOOK_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
     } catch (error) {
       console.error("Error enviando al webhook:", error);
     }
   };
 
-  const sendMessage = async (text: string, image?: string) => {
-    if (!text.trim() && !image) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim()) return;
 
     const newMessage: Message = {
       id: Date.now().toString(),
       type: "user",
       content: text,
-      image,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setInputValue("");
-    setSelectedImage(null);
 
     // Enviar al webhook
-    await sendToWebhook({
-      text,
-      image,
-      timestamp: newMessage.timestamp,
-    });
+    await sendToWebhook("text", text);
 
     // Simulate bot response
     setTimeout(() => {
@@ -219,18 +240,7 @@ export const ChatbotModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(inputValue, selectedImage || undefined);
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    sendMessage(inputValue);
   };
 
   return (
@@ -271,13 +281,6 @@ export const ChatbotModal = ({
                     : "bg-muted text-foreground border border-border/60 shadow-sm"
                 )}
               >
-                {message.image && (
-                  <img
-                    src={message.image}
-                    alt="Uploaded image for the assistant"
-                    className="rounded-lg max-w-full h-auto"
-                  />
-                )}
                 <p className="text-sm">{message.content}</p>
               </div>
             </div>
@@ -286,23 +289,6 @@ export const ChatbotModal = ({
 
         {/* Input Area */}
         <div className="px-6 py-4 border-t border-border/60 bg-background/95 space-y-3">
-          {/* Selected Image Preview */}
-          {selectedImage && (
-            <div className="relative inline-block">
-              <img
-                src={selectedImage}
-                alt="Selected"
-                className="h-20 w-20 object-cover rounded-lg border-2 border-primary"
-              />
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-
           {/* Recording Visualization */}
           {isRecording && (
             <div className="rounded-lg p-4 space-y-2 bg-muted border border-border/60">
@@ -330,24 +316,6 @@ export const ChatbotModal = ({
 
           {/* Input Form */}
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageSelect}
-              accept="image/*"
-              className="hidden"
-            />
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className="hover:bg-muted hover:text-primary"
-            >
-              <ImageIcon className="w-5 h-5" />
-            </Button>
-
             <Button
               type="button"
               variant="ghost"
@@ -377,7 +345,7 @@ export const ChatbotModal = ({
             <Button
               type="submit"
               size="icon"
-              disabled={!inputValue.trim() && !selectedImage}
+              disabled={!inputValue.trim()}
               className="bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 shadow-md disabled:opacity-50"
             >
               <Send className="w-5 h-5" />
