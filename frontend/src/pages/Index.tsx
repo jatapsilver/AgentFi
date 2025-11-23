@@ -10,6 +10,7 @@ import React, { useRef } from "react";
 import { AgentFiWalletConnectorHandle } from "@/components/AgentFiWalletConnector";
 import { ChatbotModal } from "@/components/ChatbotModal";
 import { QuoteLogsCard } from "@/components/QuoteLogsCard";
+import { useIsSignedIn } from "@coinbase/cdp-hooks";
 
 const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -40,6 +41,8 @@ const Index = () => {
   const [promptIndex, setPromptIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isSignedIn } = useIsSignedIn();
+  const [logsKey, setLogsKey] = useState(0);
   useEffect(() => {
     let typingTimeout: NodeJS.Timeout;
     const currentPrompt = examplePrompts[promptIndex];
@@ -111,6 +114,14 @@ const Index = () => {
   };
 
   const t = content[language];
+
+  useEffect(() => {
+    function handleTokenSet() {
+      setLogsKey((prev) => prev + 1);
+    }
+    window.addEventListener("auth_token_set", handleTokenSet);
+    return () => window.removeEventListener("auth_token_set", handleTokenSet);
+  }, []);
 
   return (
     <div className="min-h-screen relative overflow-hidden transition-colors duration-500">
@@ -257,7 +268,7 @@ const Index = () => {
             </div>
           </div>
           {/* Card de logs de cotización debajo de todo */}
-          <QuoteLogsCard lang={language} />
+          <QuoteLogsCard lang={language} key={logsKey} />
         </div>
       </main>
     </div>

@@ -26,6 +26,7 @@ export const QuoteLogsCard: React.FC<{ lang?: "en" | "es" }> = ({
   useEffect(() => {
     async function loadLogs() {
       const token = sessionStorage.getItem("auth_token");
+      console.log("QuoteLogsCard: token", token);
       if (!token) {
         setError(LANG[lang].connect);
         setLoading(false);
@@ -33,6 +34,7 @@ export const QuoteLogsCard: React.FC<{ lang?: "en" | "es" }> = ({
       }
       setLoading(true);
       const result = await fetchQuoteLogs();
+      console.log("QuoteLogsCard: logs result", result);
       if (result.error) {
         setError(result.error);
         setLoading(false);
@@ -42,6 +44,22 @@ export const QuoteLogsCard: React.FC<{ lang?: "en" | "es" }> = ({
       setLoading(false);
     }
     loadLogs();
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key === "auth_token") {
+        console.log("QuoteLogsCard: storage event", e);
+        loadLogs();
+      }
+    }
+    function handleTokenSet() {
+      console.log("QuoteLogsCard: custom event auth_token_set");
+      loadLogs();
+    }
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("auth_token_set", handleTokenSet);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth_token_set", handleTokenSet);
+    };
   }, [lang]);
 
   return (
