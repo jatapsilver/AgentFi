@@ -1,11 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-// Minimal env typing to silence TS without relying on vite types
-interface ImportMetaEnv {
-  VITE_WEBHOOK_URL?: string;
-}
-interface ImportMeta {
-  env: ImportMetaEnv;
-}
 import {
   Dialog,
   DialogContent,
@@ -47,7 +40,7 @@ export const ChatbotModal = ({
       const exp = data.exp; // segundos
       if (!exp) return true;
       const now = Math.floor(Date.now() / 1000);
-      const grace = Number((import.meta as any)?.env?.VITE_JWT_EXP_GRACE || 30);
+      const grace = Number(import.meta.env.VITE_JWT_EXP_GRACE || 30);
       return exp - grace <= now;
     } catch {
       return true;
@@ -222,7 +215,7 @@ export const ChatbotModal = ({
   };
 
   // URL de tu webhook de n8n
-  const WEBHOOK_URL = (import.meta as any)?.env?.VITE_WEBHOOK_URL || "";
+  const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || "";
 
   // Extraer assistantMessage del response
   const extractAssistantMessage = (data: any): string | null => {
@@ -275,6 +268,22 @@ export const ChatbotModal = ({
       }
 
       formData.append("timestamp", new Date().toISOString());
+
+      // Debug detallado antes de enviar
+      try {
+        const debugEntries: Record<string, any> = {};
+        formData.forEach((v, k) => {
+          debugEntries[k] = v instanceof Blob ? `Blob(${(v as Blob).size} bytes)` : v;
+        });
+        console.log("[Webhook][DEBUG] URL=", WEBHOOK_URL || "<VACÍO>");
+        console.log("[Webhook][DEBUG] Payload=", debugEntries);
+      } catch (e) {
+        console.warn("[Webhook][DEBUG] No se pudo inspeccionar FormData", e);
+      }
+      if (!WEBHOOK_URL) {
+        console.error("[Webhook][ERROR] WEBHOOK_URL está vacío. Revisa .env y prefijo VITE_");
+        return null;
+      }
 
       const response = await fetch(WEBHOOK_URL, {
         method: "POST",
