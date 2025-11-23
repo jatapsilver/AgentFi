@@ -11,12 +11,17 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS
+  // CORS (permisivo: permite cualquier origen y credenciales)
+  // Nota: origin '*' + credentials true no funciona en navegadores; usamos callback dinámico.
   app.enableCors({
-    origin: '*',
+    origin: (origin, callback) => {
+      callback(null, origin || '*');
+    },
+    credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: '*',
-    credentials: true,
+    exposedHeaders: '*',
+    maxAge: 86400,
   });
 
   // Seguridad
