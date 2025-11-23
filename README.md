@@ -5,7 +5,7 @@
 	<img src="public/cover.jpg" alt="AgentFi Cover" width="820" />
 	<br/>
 	<img src="public/Frontend View.png" alt="Frontend Application View" width="380" />
-	<img src="public/API Documentation.png" alt="Swagger API Documentation" width="380" />
+	<img src="public/api-documentation.png" alt="Swagger API Documentation" width="380" />
 	<img src="public/chatbot view.png" alt="Chatbot Modal View" width="780" />
 </div>
 
