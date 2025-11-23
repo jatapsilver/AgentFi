@@ -1,4 +1,5 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+// Use unified env variable name VITE_BACKEND_API_URL set via .env and Docker build args
+const BACKEND_URL = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3000";
 
 export async function loginWithBackend({
   email,
