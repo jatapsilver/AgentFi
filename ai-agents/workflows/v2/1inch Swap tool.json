@@ -1,0 +1,174 @@
+{
+  "name": "1inch Swap tool",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "network"
+            },
+            {
+              "name": "fromSymbol"
+            },
+            {
+              "name": "toSymbol"
+            },
+            {
+              "name": "amount"
+            },
+            {
+              "name": "fromAddress"
+            },
+            {
+              "name": "token"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [128, 0],
+      "id": "4f2fbb2e-3791-497e-8bdf-ad5adf35157e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://146.190.119.62:3000/oneinch/tx/simple",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "network",
+              "value": "={{ $json.network }}"
+            },
+            {
+              "name": "fromSymbol",
+              "value": "={{ $json.fromSymbol }}"
+            },
+            {
+              "name": "toSymbol",
+              "value": "={{ $json.toSymbol }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $json.amount }}"
+            },
+            {
+              "name": "fromAddress",
+              "value": "={{ $json.fromAddress }}"
+            },
+            {
+              "name": "slippage",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [352, 0],
+      "id": "53e371fa-7b7a-47b7-b1c6-4a74d472371e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "LOgsHWelxamnMeNH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/LOgsHWelxamnMeNH",
+          "cachedResultName": "AgentFi Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [800, 0],
+      "id": "68074f47-7139-4653-8171-0178470d0ef0",
+      "name": "Call 'AgentFi Agent'"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node (Run Once for All Items)\n\nconst outputItems = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  // El HTTP Request puede devolver un array o un solo objeto\n  const swapsArray = Array.isArray(data) ? data : [data];\n\n  for (const swap of swapsArray) {\n    const { network, input, tx } = swap;\n    const { to, data: txData, value } = tx.tx;\n\n    outputItems.push({\n      json: {\n        output: {\n          assistantMessage: `Your swap of ${input.amountDecimal} ${input.fromSymbol} to ${input.toSymbol} on ${network.name} is ready. Please review and sign the transaction in your wallet to execute it.`,\n          meta: {\n            action: \"SIGN_SWAP\",\n            tx: {\n              to,\n              data: txData,\n              value,\n              chainId: network.chainId,\n            },\n          },\n        },\n      },\n    });\n  }\n}\n\nreturn outputItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0],
+      "id": "2503a01d-92d5-45da-8e4e-547306e6ca13",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Call 'AgentFi Agent'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5dddd726-9b56-43f6-b2c8-83a78a535540",
+  "meta": {
+    "instanceId": "6bad1eba185697a960de5bc9203d6bff2fd56440a0b5303c382e0b1537a2a568"
+  },
+  "id": "UYZrI8RKYPrPvC7U",
+  "tags": []
+}

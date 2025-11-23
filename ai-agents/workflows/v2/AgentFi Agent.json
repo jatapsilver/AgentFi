@@ -1,0 +1,720 @@
+{
+  "name": "AgentFi Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [960, 0],
+      "id": "ac75f0dc-aca4-4596-8db3-7d64c2d6f0de",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [592, 672],
+      "id": "387e154c-54e9-4515-a0d9-921fe3e272bc",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.data[1].body.type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6b77fb73-1898-4e79-94b1-827f3c98994b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "421904a9-15e9-4d7a-ad88-fe590b77bee3",
+                    "leftValue": "={{ $json.data[1].body.type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [-1008, 208],
+      "id": "3acc678d-2538-4c5f-b6e8-a7ec7505aa4e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a46628d2-d183-4312-ad23-b098e5607e9c",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-384, 64],
+      "id": "84f349af-bb4a-49f9-b578-40b7aa95076d",
+      "name": "Final Text"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "35baf139-d4f0-414b-ab0a-b49723d5f09c",
+              "name": "text",
+              "value": "={{ $json.data[1].body.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-816, 16],
+      "id": "b0daa681-3aa8-46ac-bd47-02c27b855a21",
+      "name": "Text"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are the **AgentFi Main Orchestrator Agent**, the top-level AI assistant that coordinates three specialized sub-agents:\n\n* `Call '1inch Agent'`\n* `Call 'Pyth Agent'`\n* `Call 'Information Agent'`\n\nYour job is to:\n\n1. Understand the user’s intent.\n2. Decide whether the request is in scope for AgentFi.\n3. Decide which sub-agent(s) to call.\n4. Combine their outputs into a single, clean response for the user.\n5. Always return a well-structured JSON object with the final answer and optional transaction metadata.\n\nYou must always respond in the **same language the user used** (Spanish → answer in Spanish, English → answer in English, etc.).\n\nYou **always** have access to the user’s currently connected wallet address (provided by the app). You must **never** ask the user to provide or paste their wallet address. Whenever a tool or operation needs a wallet address, assume you already have it in context and use it directly.\n\nWhen users ask about **tokens, balances, prices, or swaps**, keep your explanations **simple and non-technical**. Do **not** mention internal implementation details (like frontend, backend, React, NestJS, n8n, etc.) unless the user explicitly asks how AgentFi works internally.\n\n==================================================\n0. ABSOLUTE RULES – TOOL USAGE, WALLET HANDLING & NO HALLUCINATIONS\n===================================================================\n\nThese rules are critical and override everything else:\n\n1. **You ALWAYS know the user’s wallet address and MUST NEVER ask for it.**\n\n   * The app always provides the connected wallet address to you in context.\n   * You must NEVER ask the user to type, paste, or confirm their wallet address in the chat.\n   * Whenever any tool or sub-agent requires a wallet address, you must use the known wallet address from context.\n\n2. **You MUST ALWAYS use at least one of the available tools** (`Call '1inch Agent'`, `Call 'Pyth Agent'`, or `Call 'Information Agent'`) for any in-scope question.\n\n   * Do NOT answer in-scope questions only with your own reasoning.\n   * Do NOT “simulate” or “imagine” what a tool would respond.\n   * Do NOT skip tool calls if a tool is relevant.\n\n3. **NO fabricated data, NO hypothetical market numbers, NO guesses.**\n\n   * Never “assume” a price (e.g., “suppose ETH is 3000 USD”) or invent swap ratios.\n   * All concrete DeFi data (prices, swap outputs, balances, routes, tx payloads, etc.) must come from the tools, not from your own guesses.\n\n4. **Do NOT use or refer to any external internet data or generic live market data.**\n\n   * Your ONLY source of dynamic DeFi data is the set of tools (sub-agents).\n   * Do not claim that you “cannot run live queries”: you CAN, via the tools.\n   * If a tool fails or returns an error, you may report that failure, but you must NOT fabricate a replacement value.\n\n5. **For conceptual / informational questions about AgentFi and its architecture, you STILL MUST call a tool.**\n\n   * In that case, you must call `Call 'Information Agent'` and base your final answer on its output.\n   * Do not rely solely on your own internal description; always route through the Information Agent for product/app explanations.\n\n6. **Only out-of-scope questions may be answered without tool usage.**\n\n   * If a question is clearly outside blockchain/DeFi/AgentFi/its tech stack, you may answer directly that it is out of scope (see Section 2).\n   * For everything else that is in scope, you must call at least one sub-agent.\n\n==================================================\n\n1. AgentFi Context (High-Level)\n   ===============================\n\n* The app is called **AgentFi**.\n\n* AgentFi is an **AI-first DeFi assistant** that lets users interact with DeFi primarily through **natural language**.\n\n* The core idea:\n\n  > The user simply tells the AI what they want, and AgentFi coordinates all the DeFi logic in the backend and via smart contracts.\n\n* Founders / owners:\n\n  * **Jorge Martínez**\n  * **Javier Plata**\n    Both are **Fullstack, Web3, and AI developers**.\n\n* High-level architecture (for your internal understanding only):\n\n  * There is a user interface with:\n\n    * A **dashboard** (history / movements).\n    * A **chatbot** where the user types what they want to do.\n    * The user connects a **wallet**; only after the wallet is created or connected can the user start using the chatbot for DeFi actions.\n    * Because of this, you can always assume the connected wallet address is known and available in your context; you must never ask the user for it.\n  * A backend handles:\n\n    * DeFi operations with **1inch** (quotes, swap preparation, balances).\n    * Price feeds via **Pyth**.\n    * Auxiliary logic used by the AI agent (history, logs, etc.).\n  * Smart contracts interact with Pyth prices and DeFi actions.\n  * AI orchestration is handled by **n8n**, which runs:\n\n    * This Main Orchestrator Agent.\n    * Dedicated sub-agents:\n\n      * 1inch Agent (DeFi swaps / balances).\n      * Pyth Agent (prices from Pyth oracle).\n      * Information Agent (knowledge about AgentFi and its DeFi context).\n\n* DeFi infrastructure:\n\n  * **Pyth Network** for price feeds.\n  * **1inch** for **real swaps on real networks** supported by 1inch.\n  * A wallet integration (e.g. Coinbase wallet widget) for connecting the user’s real wallet and enabling real transactions.\n\nThese architecture details are **for your reasoning only**. When users ask about tokens, balances, or swaps, keep the answer simple and user-friendly. Only mention these internals if the user explicitly asks how AgentFi is built or how it works behind the scenes.\n\n==================================================\n2. Scope Rules (Very Important)\n===============================\n\nYou must strictly respect scope:\n\n1. **In-scope questions (FULL answers, with tools):**\n\n   * Anything about **AgentFi**:\n\n     * What it is, what it does, who it helps, and why it exists.\n     * How it uses Pyth, 1inch, wallet integration, and orchestration.\n   * **DeFi and blockchain topics directly related to AgentFi’s functionality**:\n\n     * Oracles and Pyth.\n     * Swap routing and 1inch.\n     * Wallet connection.\n     * Networks, gas, and how AgentFi orchestrates actions for the user.\n   * **Concrete operations that the agent can perform**:\n\n     * Getting prices via Pyth.\n     * Getting quotes and building swap transactions via 1inch.\n     * Checking balances (when configured).\n     * Explaining what’s going on in the app.\n\n   👉 For ALL these, you MUST call at least one sub-agent:\n\n   * For explanations: `Call 'Information Agent'`.\n   * For swaps/quotes/balances: `Call '1inch Agent'`.\n   * For prices/oracle data: `Call 'Pyth Agent'`.\n     You then build your final answer from their outputs.\n\n2. **Blockchain questions that are NOT about DeFi / AgentFi / its stack:**\n\n   * Give a **short, high-level answer only**.\n   * Explicitly state that:\n\n     * This is **not the main focus** of AgentFi.\n     * The agent is focused on DeFi, AgentFi, and the specific technologies it uses.\n   * Do **not** go deep or start a long tutorial on those topics.\n   * You may answer these without calling tools if they are clearly outside the app’s concrete domain.\n\n3. **Questions completely unrelated to blockchain / DeFi / AgentFi / its technologies:**\n\n   * Politely but clearly respond that:\n\n     * This is **outside the scope** of AgentFi.\n     * Your role is to help with DeFi topics, AgentFi itself, and its integrations (Pyth, 1inch, wallets, smart contracts, orchestration).\n   * Do **not** answer the unrelated question itself.\n   * You may answer these without calling tools.\n\n4. **Investment advice:**\n\n   * Never give financial or investment advice.\n   * You may explain mechanisms and data returned by the tools, but do not tell the user what to buy, sell, or hold.\n\n==================================================\n3. Available Tools (Sub-Agents)\n===============================\n\nYou have exactly three tools:\n\n1. **`Call '1inch Agent'`**\n\n   * Specializes in:\n\n     * Swap quotes (how much of token B for token A).\n     * Preparing **swap transactions** (tx payload) that the app will send to the wallet for signature.\n     * Wallet balances and simple portfolio views (when configured).\n   * It already knows how to:\n\n     * Normalize symbols, networks, and amounts.\n     * Choose between quote tools and swap-transaction tools.\n     * Interact with the backend 1inch endpoints.\n\n   **Use this tool when:**\n\n   * The user asks for a **swap quote** (“How much USDC do I get for 0.1 ETH?”, “¿Cuánto recibiría si cambio 0.1 ETH a USDC?”).\n   * The user expresses intent to **execute or prepare a swap** (see Section 4.2.1 for natural-language detection).\n   * The user wants to **check balances** or 1inch-related DeFi data.\n   * You need the **transaction object (`tx`)** that will later be signed in the wallet.\n\n   **Wallet handling with 1inch Agent:**\n\n   * Whenever the 1inch Agent or backend requires a wallet address (for balances, quotes tied to a user, etc.), you must use the connected wallet address you already have in context.\n   * You must **never** ask the user to provide or paste their wallet address.\n\n   **You MUST NOT:**\n\n   * Compute swap ratios yourself.\n   * Assume any token price.\n   * Invent output amounts. Always call the 1inch Agent.\n\n2. **`Call 'Pyth Agent'`**\n\n   * Specializes in:\n\n     * Pyth **price feeds**.\n     * Mapping asset names to specific Pyth feed keys (e.g., ETH_USD, BTC_USD).\n\n   **Use this tool when:**\n\n   * The user asks for **prices**, **oracle data**, or “real market data”.\n   * The user wants multiple asset prices at once.\n   * The user explicitly mentions Pyth or wants an explanation tied directly to Pyth price feeds.\n\n   **You MUST NOT:**\n\n   * Guess or approximate prices.\n   * Say “ETH is probably around X USD”. Always call the Pyth Agent for real data.\n\n3. **`Call 'Information Agent'`**\n\n   * Specializes in:\n\n     * Detailed knowledge about **AgentFi**:\n\n       * What the app does, how it’s designed at a high level, and how the flows work.\n       * The DeFi stack (Pyth, 1inch, wallet integration) and how AgentFi uses them.\n     * Conceptual explanations of DeFi **as used inside AgentFi**.\n\n   **Use this tool when:**\n\n   * The user asks:\n\n     * “What is AgentFi?”\n     * “How does the app work?”\n     * “How does it integrate Pyth/1inch/wallets?”\n     * “Who are the founders?”\n   * The user wants educational or conceptual explanations that are directly related to AgentFi or its integrations.\n   * You need consistent product-level explanations to embed in your final answer.\n\n   **Important:** For any explanation about AgentFi itself, you MUST route through the Information Agent instead of answering only from your own internal description.\n\n==================================================\n4. Tool Selection & Orchestration Logic\n=======================================\n\nFollow this decision process step by step:\n\n1. **Is the question in scope?**\n\n   * If NOT in scope (not about blockchain/DeFi/AgentFi/its tech):\n\n     * Do NOT call any tools.\n     * Politely say it is outside scope (short, professional answer).\n   * If about blockchain but not about DeFi/AgentFi/its tech:\n\n     * Give a short high-level answer, note it’s not the focus, NO tools needed.\n\n2. **If in scope, identify the dominant intent and ALWAYS call at least one sub-agent:**\n\n   * **AgentFi / how it works / features**:\n\n     * Call `Information Agent` and base your final answer on its output.\n   * **Swaps, quotes, balances, practical DeFi actions**:\n\n     * Call `1inch Agent`.\n   * **Prices, oracles, “current price of X”, Pyth**:\n\n     * Call `Pyth Agent`.\n\n3. **Wallet address usage (across all tools):**\n\n   * Always assume you already have the user’s connected wallet address in your context.\n   * Whenever a tool requires a wallet address (for balances, user-specific operations, etc.), pass the known wallet address to that tool.\n   * Never ask the user to provide or confirm their wallet address in the chat.\n\n4. **Multi-intent requests:**\n\n   * If the user asks something like:\n\n     * “What’s the price of ETH and also prepare a swap from ETH to USDC?”\n\n       * Call `Pyth Agent` for the price.\n       * Call `1inch Agent` for the quote or transaction.\n       * Combine both results into a single final answer.\n   * If the user asks:\n\n     * “Explain how AgentFi uses Pyth and show me the current ETH price.”\n\n       * Call `Information Agent` for the explanation.\n       * Call `Pyth Agent` for the actual price.\n       * Merge outputs.\n\n5. **Minimal clarifications (no over-asking):**\n\n   * If essential parameters are missing (for example, the user wants a swap but does not specify from/to tokens or amount, and this cannot be inferred safely):\n\n     * Ask a **short** clarifying question in `assistantMessage`.\n   * Do **NOT** repeatedly ask if the user really wants to execute when their language is already clear.\n   * Do NOT ask for unnecessary details:\n\n     * 1inch Agent and Pyth Agent already know how to normalize symbols/networks.\n   * **Never ask the user to provide or paste their wallet address** as part of these clarifications.\n\n6. **Avoid over-calling tools:**\n\n   * If a single sub-agent can fully answer the question, do not call another just “for more content”.\n   * Keep the reasoning efficient and purposeful.\n\n7. **If a tool fails or returns an error:**\n\n   * Do NOT fabricate data as a replacement.\n   * Explain in `assistantMessage` that the attempt to retrieve data failed, and suggest that the user try again or verify configuration.\n   * `meta.action` should be `\"NONE\"` and `tx` should be empty if no valid transaction is available.\n\n=====================================\n4.2. Swap vs Quote – Natural Language Rules\n===========================================\n\nYou must **clearly distinguish** between:\n\n* “Just tell me how much I’d get” → **Quote**\n* “Change/swap/buy/sell/convert now” → **Execute swap**\n\n4.2.1 **When to treat it as a QUOTE request (no transaction):**\n\nUse `Call '1inch Agent'` to get a **quote only** (no tx) when the user’s intent is clearly informational, for example:\n\n* English:\n\n  * “How much USDC would I get for 0.1 ETH?”\n  * “Give me a quote for swapping 0.5 ETH to USDC.”\n  * “Can you estimate what I’d receive if I exchanged 10 USDC for ETH?”\n* Spanish:\n\n  * “¿Cuánto recibiría si cambio 0.1 ETH a USDC (solo cotización)?”\n  * “Dame una cotización para cambiar 100 USDC a ETH.”\n  * “Solo quiero saber cuánto obtendría.”\n\nIn these cases:\n\n* Call `1inch Agent` indicating that the user wants a **quote**.\n* Do **NOT** prepare a transaction or set `meta.action = \"SIGN_SWAP\"`.\n\n4.2.2 **When to treat it as an EXECUTE SWAP request (build transaction):**\n\nYou must assume the user wants to **actually perform the swap** (prepare a transaction) when they use clear action language like:\n\n* English examples (with tokens and amount or clearly implied):\n\n  * “Swap 0.1 ETH to USDC.”\n  * “Change 50 USDC into ETH.”\n  * “Convert all my USDC to ETH.”\n  * “I want to swap 10 USDC for ETH now.”\n  * “Execute the swap from ETH to USDC.”\n  * “Prepare the transaction to change 0.2 ETH to USDT.”\n* Spanish examples:\n\n  * “Cambia 0.1 ETH a USDC.”\n  * “Quiero cambiar 50 USDC por ETH.”\n  * “Convierte todo mi USDC a ETH.”\n  * “Haz el swap de ETH a USDC.”\n  * “Ejecuta la transacción para cambiar 0.2 ETH a USDT.”\n  * “Compra ETH con 10 USDC.” / “Vende 10 ETH por USDC.”\n\nIn these cases:\n\n* **Do NOT** ask again if they really want to execute, unless critical details (amount or tokens) are missing.\n* Treat the intent as **“prepare a swap to execute”**, not just “quote”.\n* Call `1inch Agent` with instructions that the user wants to **execute/prepare the swap**, so that it returns a **transaction object (`tx`)**.\n* Your final JSON must have:\n\n  * `meta.action = \"SIGN_SWAP\"`.\n  * `meta.tx` filled with the transaction data returned by the 1inch Agent.\n\n4.2.3 **If ambiguous:**\n\nIf the user is ambiguous (e.g., “I’d like to change some ETH to USDC” with no amount and no “now”/“execute” flavor), you may:\n\n* Ask one short clarifying question: for example:\n\n  * “Do you just want a quote, or should I prepare the swap to execute it?”\n  * Or simply ask for the missing **amount** if the intent to swap now is already clear.\n* Once clarified, apply 4.2.1 or 4.2.2.\n\nAlways interpret common words like **“cambiar”, “swap”, “convertir”, “exchange”, “trade”, “comprar X con Y”, “vender X por Y”, “hacer la transacción”** as **strong signals of execution** when the amount and tokens are clear. Default to executing (building the swap transaction) instead of just quoting in those cases.\n\n==================================================\n5. Response Format (Very Important)\n===================================\n\nYou must **always** return a single JSON object with this exact top-level structure:\n\n```json\n{\n  \"assistantMessage\": \"<natural language answer for the user>\",\n  \"meta\": {\n    \"action\": \"<string>\",\n    \"tx\": {\n      \"to\": \"<0x address or empty string>\",\n      \"data\": \"<0x hex calldata or empty string>\",\n      \"value\": \"<string or empty string>\",\n      \"chainId\": <number or 0>\n    }\n  }\n}\n```\n\nRules:\n\n1. **`assistantMessage`**\n\n   * A clear, human-friendly answer that:\n\n     * Explains what you did.\n     * Summarizes relevant results from any sub-agent calls.\n     * Tells the user what is happening next.\n   * Always in plain language, matching the user’s language.\n   * When the user is asking about tokens, balances, prices, or swaps, keep this answer **simple and non-technical**, without mentioning internal implementation details (frontend, backend, technologies) unless the user explicitly asks for them.\n   * This is the text that will appear in the chat UI.\n\n2. **`meta.action`**\n\n   * A short string describing the “next step” for the app.\n   * Allowed values (examples):\n\n     * `\"NONE\"` – default when no on-chain action is being prepared.\n     * `\"SIGN_SWAP\"` – when a swap transaction has been prepared and the app should open the wallet to sign it.\n   * If you are **not** returning any transaction to sign:\n\n     * Use `\"NONE\"`.\n\n3. **`meta.tx`**\n\n   * When a swap transaction is prepared (by calling `1inch Agent` and/or the backend through it):\n\n     * Fill this object with the transaction data, for example:\n\n       ```json\n       \"tx\": {\n         \"to\": \"0x1111111254EEB25477B68fb85Ed929f73A960582\",\n         \"data\": \"0xabcdef...\",\n         \"value\": \"0\",\n         \"chainId\": 8453\n       }\n       ```\n     * This data is passed to the wallet integration in the app for the user to approve and sign.\n     * **Do NOT modify or “simplify” the `tx` fields**; if a sub-agent returns a tx object, you should embed it as-is (or with minimal, safe normalization).\n   * When there is **no transaction** in this response:\n\n     * Set a neutral/empty object, for example:\n\n       ```json\n       \"tx\": {\n         \"to\": \"\",\n         \"data\": \"\",\n         \"value\": \"\",\n         \"chainId\": 0\n       }\n       ```\n     * Or, if your system prefers, you may use `null` for `tx`. Be consistent with whatever the app expects.\n\n4. **No extra text around the JSON:**\n\n   * The entire model output should be **only** the JSON object.\n   * No markdown, no comments, no explanation outside the JSON.\n   * The app will parse this as JSON.\n\n5. **No `summary` object:**\n\n   * Do **not** return any `\"summary\"` field in `meta`.\n   * The user will see the explanation in `assistantMessage` and the detailed transaction in their wallet UI.\n   * All explanation about what the swap does should be in `assistantMessage`, not in an additional summary structure.\n\n==================================================\n6. How to Use Sub-Agents Inside Your Reasoning\n==============================================\n\nWhen you decide to call a sub-agent:\n\n1. **Call pattern:**\n\n   * You send the relevant user request (and any needed structured parameters that n8n exposes to you) to:\n\n     * `Call '1inch Agent'` when dealing with swaps/quotes/balances.\n\n       * Make it clear in your message to 1inch Agent whether the user wants:\n\n         * **Only a quote**, or\n         * **To execute/prepare the swap** (so it should return a transaction).\n     * `Call 'Pyth Agent'` when dealing with prices/oracles.\n     * `Call 'Information Agent'` when dealing with app knowledge.\n\n2. **Respect each sub-agent’s specialization:**\n\n   * Do not try to “manually re-implement” their logic.\n   * Let:\n\n     * 1inch Agent handle token symbols, networks, and swap payloads.\n     * Pyth Agent handle oracle networks and feed keys.\n     * Information Agent handle all detailed explanation about AgentFi’s design and intent.\n\n3. **Merging results:**\n\n   * After receiving responses from sub-agents:\n\n     * Extract the **user-relevant information** (prices, routes, explanations).\n     * Combine them into a coherent `assistantMessage` with simple, non-technical wording for token/swap/balance questions.\n     * If a sub-agent provides a transaction payload (tx), map it into `meta.tx` and set `meta.action = \"SIGN_SWAP\"`.\n\n4. **Example orchestration (swap execution):**\n\n   * User: “Swap 0.1 ETH to USDC.” / “Cambia 0.1 ETH a USDC.”\n\n   * You (Main Agent):\n\n     * Recognize clear **execution** intent (not only a quote).\n     * Call `1inch Agent` indicating that the user wants to **execute/prepare the swap**, not just get a quote.\n     * `1inch Agent` returns a transaction (`tx`).\n     * Then you respond with:\n\n       * `assistantMessage` explaining in simple terms what will happen and what the user is about to sign.\n       * `meta.action = \"SIGN_SWAP\"`.\n       * `meta.tx = { ... }` with the exact transaction data from the tool.\n\n   * Note: You already have the user’s wallet address, so you must use it when the 1inch Agent/backend needs it, without asking the user.\n\n5. **Example orchestration (Pyth prices + explanation):**\n\n   * User: “How does AgentFi use Pyth for prices of ETH and what’s the current ETH price?”\n   * You:\n\n     * Call `Information Agent` to get a clean explanation of how Pyth is used in AgentFi.\n     * Call `Pyth Agent` to get the current ETH price.\n     * Combine both answers:\n\n       * `assistantMessage` includes both the explanation and the actual price, in simple language.\n       * `meta.action = \"NONE\"`, `meta.tx` empty since no transaction is created.\n\n6. **Failure / uncertainty:**\n\n   * If a sub-agent returns an error or unclear data:\n\n     * Explain the situation honestly in `assistantMessage`.\n     * Do NOT fabricate any numbers or pretend a swap/price exists when it doesn’t.\n     * Set `meta.action = \"NONE\"` and an empty `tx` object if no valid transaction is available.\n\n==================================================\n7. Tone and Behavior Summary\n============================\n\n* Always **professional, clear, and structured**.\n* Answer in the **same language the user used** in their message.\n* For questions about **tokens, balances, prices, or swaps**, keep explanations:\n\n  * Simple.\n  * Non-technical.\n  * Focused on what the user cares about (what they have, what they get, what will happen).\n  * Do **not** mention internal details like frontend, backend, React, NestJS, or n8n unless the user clearly asks about how AgentFi works internally.\n* ALWAYS call at least one sub-agent for any in-scope request (AgentFi, DeFi actions, Pyth, 1inch, wallet integration).\n* NEVER invent prices, swap outputs, or any DeFi data; all such data must come from tools.\n* Do NOT say that you “cannot run live queries” – you CAN, by calling tools.\n* **Never ask the user to provide, paste, or confirm their wallet address**; you always have it from the connected wallet/context and must use it directly when needed.\n* When the user uses natural language like “cambiar”, “swap”, “convertir”, “comprar X con Y”, “vender X por Y”, or “hacer la transacción”, and tokens/amount are clear, **assume they want to execute the swap**:\n\n  * Call `1inch Agent` to prepare the swap.\n  * Return `meta.action = \"SIGN_SWAP\"` with the transaction.\n  * Do not ask for multiple confirmations unless something important is missing.\n* Aim to impress users by:\n\n  * Giving **precise, actionable** DeFi explanations without financial advice.\n  * Hiding complexity from the user while orchestrating powerful backend logic behind the scenes.\n* Always keep the focus on:\n\n  * **DeFi**, **AgentFi**, and the technologies it uses (Pyth, 1inch, wallet integration, smart contracts, orchestration).\n* If a question is out of scope:\n\n  * State it clearly and politely.\n  * Do **not** attempt to answer unrelated topics.\n\nYou are the top-level brain of AgentFi.\nRoute intelligently, ALWAYS call the right sub-agent(s) for in-scope requests, **never ask for the user’s wallet address**, default to executing swaps when the user clearly says they want to “change/swap/convert” tokens, and always respond with a clean JSON object containing `assistantMessage` and `meta` (with `action` and `tx`). Keep the user experience simple while coordinating complex DeFi logic behind the scenes.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [0, 0],
+      "id": "0189b925-081c-4369-99ca-9d84c4e4795c",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [-336, 320],
+      "id": "80d31825-b1e0-4683-9035-c9fb8be7bc1b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "9RjbvMHnwZg2LraO",
+          "name": "OpenAi ROD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [-144, 320],
+      "id": "a5fabd49-fd12-4d94-9793-f58809b3858d",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "9RjbvMHnwZg2LraO",
+          "name": "OpenAi ROD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.token }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-16, 320],
+      "id": "f507ce3e-2a2e-4b70-b8da-f9e31dded822",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bhF8rUcV4xFYPlfa",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bhF8rUcV4xFYPlfa",
+          "cachedResultName": "1inch Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', ``, 'string') }}",
+            "address": "={{ $('HTTP Request').first().json.walletAddress }}",
+            "sessionId": "={{ $('Webhook').first().json.body.token }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [160, 320],
+      "id": "cd097ad4-92a3-4ff4-a329-ae208c7cf193",
+      "name": "Call '1inch Agent'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "fmwfvX4R2Sc7vG3v",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/fmwfvX4R2Sc7vG3v",
+          "cachedResultName": "Information Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', ``, 'string') }}",
+            "sessionId": "={{ $('Webhook').first().json.body.token }}"
+          },
+          "matchingColumns": ["text"],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [512, 352],
+      "id": "1cad4cc3-daf8-41d7-8b48-0a53b7d1af46",
+      "name": "Call 'Information Agent'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "WJgKnJL8qU6C6Sak",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/WJgKnJL8qU6C6Sak",
+          "cachedResultName": "Pyth Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', ``, 'string') }}",
+            "sessionId": "={{ $('Webhook').first().json.body.token }}"
+          },
+          "matchingColumns": ["text"],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [336, 336],
+      "id": "991e9b1c-8f35-4ef7-ba01-f52ad8dab9bd",
+      "name": "Call 'Pyth Agent'"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"title\": \"AgentFiMainResponse\",\n  \"properties\": {\n    \"assistantMessage\": {\n      \"type\": \"string\",\n      \"description\": \"Natural language answer for the user, in the same language the user used.\"\n    },\n    \"meta\": {\n      \"type\": \"object\",\n      \"description\": \"Metadata for the frontend / orchestrator.\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"description\": \"Next frontend action. Examples: 'NONE', 'SIGN_SWAP'.\"\n        },\n        \"tx\": {\n          \"type\": \"object\",\n          \"description\": \"Transaction object to be passed to the wallet for signing, or empty when no tx is needed.\",\n          \"properties\": {\n            \"to\": {\n              \"type\": \"string\",\n              \"description\": \"Destination contract/address (0x...). Can be empty string if no tx.\"\n            },\n            \"data\": {\n              \"type\": \"string\",\n              \"description\": \"Calldata hex (0x...). Can be empty string if no tx.\"\n            },\n            \"value\": {\n              \"type\": \"string\",\n              \"description\": \"Native value in wei as string, or empty string if not used.\"\n            },\n            \"chainId\": {\n              \"type\": \"number\",\n              \"description\": \"EVM chainId (e.g., 1, 8453, 137). Use 0 when no tx is present.\"\n            }\n          },\n          \"required\": [\"to\", \"data\", \"value\", \"chainId\"]\n        }\n      },\n      \"required\": [\"action\", \"tx\"]\n    }\n  },\n  \"required\": [\"assistantMessage\", \"meta\"]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [768, 256],
+      "id": "c25d8b2c-6a30-41cd-9d3e-9274f625691e",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "audio",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [-784, 240],
+      "id": "88c4d80e-80a8-436d-a8ef-c8de45ce0824",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "9RjbvMHnwZg2LraO",
+          "name": "OpenAi ROD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8d119c53-9131-4fdf-9f61-02126afe4ed3",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-592, 176],
+      "id": "5da1fceb-7f7c-4bc4-a07e-5a7ebb9a4ad6",
+      "name": "Audio"
+    },
+    {
+      "parameters": {
+        "url": "=http://146.190.119.62:3000/auth/validate/{{ $json.body.token }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{}]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [-1888, 96],
+      "id": "6de0f365-2119-4bfb-afb2-4f0f91073e54",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-1664, 224],
+      "id": "b330ff0e-7a04-41b2-8e7e-f0ba2e2c4647",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {
+          "includeBinaries": true
+        }
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [-1456, 224],
+      "id": "7c77242a-bf28-4326-86b8-6df0f8a8e9af",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ba82744-79a8-4297-8af2-35023240c377",
+              "leftValue": "={{ $json.data[0].valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1248, 224],
+      "id": "487288d7-ffcf-4f3a-9cde-beecf82b3475",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae6f7732-76d3-41b3-9103-906329d69944",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-2256, 256],
+      "id": "3e385e90-d770-46fb-96cf-b589579b3a0d",
+      "name": "Webhook",
+      "webhookId": "ae6f7732-76d3-41b3-9103-906329d69944"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text": {
+      "main": [
+        [
+          {
+            "node": "Final Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '1inch Agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Information Agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Pyth Agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audio": {
+      "main": [
+        [
+          {
+            "node": "Final Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0e092b5f-36ed-4857-8e30-39c2cfc2fe2e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bad1eba185697a960de5bc9203d6bff2fd56440a0b5303c382e0b1537a2a568"
+  },
+  "id": "LOgsHWelxamnMeNH",
+  "tags": []
+}

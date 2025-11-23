@@ -23,14 +23,13 @@ async function bootstrap() {
     maxAge: 86400,
   });
 
-  // Seguridad (desactivamos CSP porque rompe Swagger)
   app.use(
     helmet({
       contentSecurityPolicy: false,
     }),
   );
 
-  // Compresión
+  // Compression
   app.use(compression());
 
   // Filtro global de excepciones
@@ -48,17 +47,15 @@ async function bootstrap() {
     }),
   );
 
-  // 📘 Configuración de Swagger
   const config = new DocumentBuilder()
     .setTitle('DeFi Edu API')
-    .setDescription('API para la plataforma educativa de DeFi')
+    .setDescription('API for the DeFi educational platform')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
 
-  // Endpoint para el JSON de Swagger
   app.use('/api-json', (req, res) => {
     res.send(document);
   });
@@ -73,7 +70,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port, '0.0.0.0'); // importante para Docker
+  await app.listen(port, '0.0.0.0');
   console.log(`Backend running on http://localhost:${port}`);
   console.log(`Swagger docs available at http://localhost:${port}/api`);
 }

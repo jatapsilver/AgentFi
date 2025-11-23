@@ -273,7 +273,8 @@ export const ChatbotModal = ({
       try {
         const debugEntries: Record<string, any> = {};
         formData.forEach((v, k) => {
-          debugEntries[k] = v instanceof Blob ? `Blob(${(v as Blob).size} bytes)` : v;
+          debugEntries[k] =
+            v instanceof Blob ? `Blob(${(v as Blob).size} bytes)` : v;
         });
         console.log("[Webhook][DEBUG] URL=", WEBHOOK_URL || "<VACÍO>");
         console.log("[Webhook][DEBUG] Payload=", debugEntries);
@@ -281,7 +282,9 @@ export const ChatbotModal = ({
         console.warn("[Webhook][DEBUG] No se pudo inspeccionar FormData", e);
       }
       if (!WEBHOOK_URL) {
-        console.error("[Webhook][ERROR] WEBHOOK_URL está vacío. Revisa .env y prefijo VITE_");
+        console.error(
+          "[Webhook][ERROR] WEBHOOK_URL está vacío. Revisa .env y prefijo VITE_"
+        );
         return null;
       }
 
