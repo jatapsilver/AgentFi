@@ -163,6 +163,9 @@ const AgentFiWalletConnector = forwardRef<
     // Solo intentar cerrar sesión si realmente está conectado
     if (!isSignedIn) return;
 
+    // Limpiar todo el sessionStorage al desconectar la wallet
+    sessionStorage.clear();
+
     try {
       await performSignOut();
     } catch (error) {
