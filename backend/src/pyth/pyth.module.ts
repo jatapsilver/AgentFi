@@ -5,9 +5,10 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { PythService } from './pyth.service';
 import { PythController } from './pyth.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule],
+  imports: [HttpModule, ConfigModule, AuthModule],
   providers: [PythService],
   controllers: [PythController],
   exports: [PythService],

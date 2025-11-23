@@ -50,3 +50,30 @@ RUN npm install
 COPY contracts ./
 
 # Sin CMD aquí: se define en contracts/docker-compose.yml
+
+# ---------- FRONTEND BUILD ----------
+FROM base AS frontend-build
+WORKDIR /app/frontend
+
+# Instalar dependencias de frontend
+COPY frontend/package*.json ./
+RUN npm install
+
+# Copiar código fuente del frontend
+COPY frontend ./
+
+# Build Vite (output en /app/frontend/dist)
+RUN npm run build
+
+# ---------- FRONTEND RUNTIME ----------
+FROM nginx:alpine AS frontend
+# Limpiar contenido default
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
+
+# Copiar opcionalmente configuración custom de nginx si existiera
+# (Si más adelante agregas un nginx.conf personalizado, descomentar la línea siguiente)
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

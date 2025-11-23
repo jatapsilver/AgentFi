@@ -1,4 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+// Minimal env typing to silence TS without relying on vite types
+interface ImportMetaEnv {
+  VITE_WEBHOOK_URL?: string;
+}
+interface ImportMeta {
+  env: ImportMetaEnv;
+}
 import {
   Dialog,
   DialogContent,
@@ -28,6 +35,14 @@ export const ChatbotModal = ({
   onOpenChange,
   language,
 }: ChatbotModalProps) => {
+  // Token gating: do not render chatbot if user lacks auth token
+  const authToken =
+    typeof window !== "undefined" ? sessionStorage.getItem("auth_token") : null;
+  const [isTokenChecked, setIsTokenChecked] = useState(false);
+  useEffect(() => {
+    setIsTokenChecked(true);
+  }, []);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -94,18 +109,25 @@ export const ChatbotModal = ({
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
-        // Send audio to webhook
-        await sendToWebhook("audio", audioBlob);
-
-        // Add message to chat
-        const audioMessage: Message = {
+        const userAudioMessage: Message = {
           id: Date.now().toString(),
           type: "user",
           content:
             "🎤 " + (language === "en" ? "Audio message" : "Mensaje de audio"),
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, audioMessage]);
+        setMessages((prev) => [...prev, userAudioMessage]);
+
+        const assistant = await sendToWebhook("audio", audioBlob);
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: "bot",
+          content:
+            assistant ||
+            (language === "en" ? "Processing audio..." : "Procesando audio..."),
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, botMessage]);
 
         stream.getTracks().forEach((track) => track.stop());
       };
@@ -169,73 +191,142 @@ export const ChatbotModal = ({
   };
 
   // URL de tu webhook de n8n
-  const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL as string;
+  const WEBHOOK_URL = (import.meta as any)?.env?.VITE_WEBHOOK_URL || "";
 
-  // Enviar datos al webhook (audio o texto)
+  // Extraer assistantMessage del response
+  const extractAssistantMessage = (data: any): string | null => {
+    try {
+      // Caso 1: Array directo (ejemplo proporcionado)
+      if (Array.isArray(data) && data.length > 0) {
+        // Variaciones posibles dentro del array: item.output.assistantMessage, item.json.output.assistantMessage
+        for (const item of data) {
+          const direct = item?.output?.assistantMessage;
+          if (typeof direct === "string" && direct.trim()) return direct;
+          const nested = item?.json?.output?.assistantMessage;
+          if (typeof nested === "string" && nested.trim()) return nested;
+        }
+      }
+      // Caso 2: Objeto con output directo
+      if (data?.output?.assistantMessage) {
+        const msg = data.output.assistantMessage;
+        if (typeof msg === "string" && msg.trim()) return msg;
+      }
+      // Caso 3: Objeto con json.output
+      if (data?.json?.output?.assistantMessage) {
+        const msg2 = data.json.output.assistantMessage;
+        if (typeof msg2 === "string" && msg2.trim()) return msg2;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  };
+
+  // Enviar datos al webhook (audio o texto) y devolver el assistantMessage
   const sendToWebhook = async (
     type: "text" | "audio",
     content: string | Blob
-  ) => {
+  ): Promise<string | null> => {
     try {
       const token = sessionStorage.getItem("auth_token");
       const formData = new FormData();
 
-      // Add type
       formData.append("type", type);
 
-      // Add content based on type
       if (type === "audio" && content instanceof Blob) {
         formData.append("audio", content, `audio_${Date.now()}.webm`);
       } else if (type === "text" && typeof content === "string") {
         formData.append("text", content);
       }
 
-      // Add token if available
       if (token) {
         formData.append("token", token);
       }
 
-      // Add timestamp
       formData.append("timestamp", new Date().toISOString());
 
-      await fetch(WEBHOOK_URL, {
+      const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         body: formData,
+        // Accept header para solicitar JSON si el workflow lo soporta
+        headers: {
+          Accept: "application/json, text/plain, */*",
+        },
       });
+
+      const status = response.status;
+      let rawBody: string | null = null;
+      try {
+        rawBody = await response.text();
+      } catch {
+        rawBody = null;
+      }
+      // Intentar parsear JSON si hay cuerpo
+      let parsed: any = null;
+      if (rawBody && rawBody.trim()) {
+        try {
+          parsed = JSON.parse(rawBody);
+        } catch (e) {
+          console.warn(
+            "Respuesta no es JSON válido, cuerpo recibido:",
+            rawBody
+          );
+        }
+      }
+      console.log("[Webhook] status=", status, "parsed=", parsed);
+      let assistant = extractAssistantMessage(parsed);
+      if (!assistant && rawBody) {
+        // Fallback: intentar extraer con regex desde el cuerpo bruto si no se pudo parsear JSON correctamente
+        const regexes = [
+          /"assistantMessage"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/, // captura cadena con posibles escapes
+          /assistantMessage\\":\\"([^"\\]+)\\"/, // formato doblemente escapado
+        ];
+        for (const r of regexes) {
+          const m = rawBody.match(r);
+          if (m && m[1]) {
+            // Reemplazar secuencias de escape comunes (\n) por saltos reales
+            assistant = m[1].replace(/\\n/g, "\n").trim();
+            break;
+          }
+        }
+      }
+      if (!assistant) {
+        console.log(
+          "[Webhook] assistantMessage no encontrado tras parse y regex, cuerpo bruto=",
+          rawBody
+        );
+      }
+      return assistant;
     } catch (error) {
       console.error("Error enviando al webhook:", error);
+      return null;
     }
   };
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
       content: text,
       timestamp: new Date(),
     };
-
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
 
-    // Enviar al webhook
-    await sendToWebhook("text", text);
-
-    // Simulate bot response
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content:
-          language === "en"
-            ? "I'm processing your request..."
-            : "Estoy procesando tu solicitud...",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    }, 500);
+    const assistant = await sendToWebhook("text", text);
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: "bot",
+      content:
+        assistant ||
+        (language === "en"
+          ? "I'm processing your request..."
+          : "Estoy procesando tu solicitud..."),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, botMessage]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -243,9 +334,36 @@ export const ChatbotModal = ({
     sendMessage(inputValue);
   };
 
+  // Format message content: paragraphs for \n\n, line breaks for single \n
+  const formatContent = (content: string) => {
+    const paragraphs = content.split(/\n\n+/);
+    return (
+      <>
+        {paragraphs.map((p, idx) => {
+          const parts = p.split(/\n/);
+          return (
+            <p key={idx} className="text-sm leading-relaxed break-words">
+              {parts.map((line, i) => (
+                <>
+                  {line}
+                  {i < parts.length - 1 && <br />}
+                </>
+              ))}
+            </p>
+          );
+        })}
+      </>
+    );
+  };
+
+  // Early return if token not present (after check)
+  if (isTokenChecked && !authToken) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0 gap-0 rounded-3xl bg-background border border-border/60 shadow-2xl">
+      <DialogContent className="w-full sm:max-w-[680px] md:max-w-[760px] h-[80vh] flex flex-col p-0 gap-0 rounded-3xl bg-background border border-border/60 shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b border-border/60 bg-background/95 backdrop-blur">
           <DialogTitle className="text-2xl font-bold text-gradient">
@@ -275,13 +393,15 @@ export const ChatbotModal = ({
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3 space-y-2",
+                  "max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3",
                   message.type === "user"
                     ? "bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-md"
                     : "bg-muted text-foreground border border-border/60 shadow-sm"
                 )}
               >
-                <p className="text-sm">{message.content}</p>
+                <div className="space-y-2 overflow-hidden break-words">
+                  {formatContent(message.content)}
+                </div>
               </div>
             </div>
           ))}
@@ -318,11 +438,9 @@ export const ChatbotModal = ({
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
               onClick={isRecording ? stopRecording : startRecording}
               className={cn(
-                "hover:bg-muted",
+                "hover:bg-muted p-2 rounded-full",
                 isRecording
                   ? "text-destructive hover:text-destructive"
                   : "hover:text-primary"
@@ -344,9 +462,8 @@ export const ChatbotModal = ({
 
             <Button
               type="submit"
-              size="icon"
               disabled={!inputValue.trim()}
-              className="bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 shadow-md disabled:opacity-50"
+              className="bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 shadow-md disabled:opacity-50 p-2 rounded-full"
             >
               <Send className="w-5 h-5" />
             </Button>
