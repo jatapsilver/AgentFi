@@ -9,6 +9,7 @@ import { envValidationSchema } from './config/env.validation';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { PythModule } from './pyth/pyth.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -38,6 +39,11 @@ import { PythModule } from './pyth/pyth.module';
         retryAttempts: 30,
         retryDelay: 5000,
       }),
+    }),
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '1h' },
     }),
     OneInchModule,
     UserModule,
