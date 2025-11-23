@@ -1,0 +1,129 @@
+{
+  "name": "1inch Swap tool",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "network"
+            },
+            {
+              "name": "fromSymbol"
+            },
+            {
+              "name": "toSymbol"
+            },
+            {
+              "name": "amount"
+            },
+            {
+              "name": "fromAddress"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-192, 0],
+      "id": "139183d2-8929-4bc7-9e2f-3044e550401a",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hack-backend:3000/oneinch/quote/simple",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "network",
+              "value": "={{ $json.network }}"
+            },
+            {
+              "name": "fromSymbol",
+              "value": "={{ $json.fromSymbol }}"
+            },
+            {
+              "name": "toSymbol",
+              "value": "={{ $json.toSymbol }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $json.amount }}"
+            },
+            {
+              "name": "fromAddress",
+              "value": "={{ $json.fromAddress }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [32, 0],
+      "id": "afc063e4-740c-4a5c-aeff-3a6ae6ead481",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DCbATjvIy4E6MhMM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DCbATjvIy4E6MhMM",
+          "cachedResultName": "AgentFi Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [272, 0],
+      "id": "bed1c1f3-8b45-412e-88e5-2fdaf177c47b",
+      "name": "Call 'AgentFi Agent'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Call 'AgentFi Agent'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "164f95a1-9e03-4c02-bcb7-7513a14186be",
+  "meta": {
+    "instanceId": "d737c946da882b40563e0d671e8563c329513ef7a16c31d5dbf484b3613832ae"
+  },
+  "id": "YabhRPwNOG4o23oZ",
+  "tags": []
+}

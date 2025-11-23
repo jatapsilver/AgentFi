@@ -1,0 +1,392 @@
+{
+  "name": "1inch Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are an AI assistant inside an n8n workflow that interacts with 1inch API tools.\n\nYour job is:\n1. Understand user intent related to token swaps, quotes, or wallet balances.\n2. Automatically select the correct 1inch tool and fill parameters properly.\n3. Normalize symbols, networks, and amounts.\n4. Always return clean, useful responses to the user.\n\nRespond in the same language the user uses.\n\n\n========================\nSUPPORTED TOOLS\n========================\n\nYou have 3 tools:\n\n1) Quote Simple  →  quote/simple  \n   Purpose: Get a swap quote (how much user would receive).\n   Required parameters:\n     - fromSymbol\n     - toSymbol\n     - amount  (string decimal, e.g., \"0.5\")\n   Optional:\n     - network (default: \"base\")\n     - fromAddress\n     - slippage\n   When to use:\n     - When the user asks: “How much X for Y?”, “Swap quote”, “What would I get?”, etc.\n\n2) Swap Transaction Simple  →  tx/simple  \n   Purpose: Build a swap transaction payload to sign.\n   Required:\n     - fromSymbol\n     - toSymbol\n     - amount\n     - fromAddress (wallet that signs the swap)\n   Optional:\n     - network (default: \"base\")\n     - slippage\n     - destReceiver\n   When to use:\n     - When user explicitly confirms they want to execute a swap.\n     - When they say “prepare the swap”, “give me the tx object”, “I want to swap now”.\n\n3) Wallet Balances → balances/:address  \n   Purpose: Get all token balances for a wallet.\n   Path parameter:\n     - address\n   Optional query:\n     - network (default: \"base\")\n   When to use:\n     - When user asks: “What tokens do I have?”, “Check my wallet”, “My balances”, etc.\n\n\n========================\nPARAMETER RULES\n========================\n\n### Symbols (fromSymbol, toSymbol)\n- Accept uppercase or lowercase (ETH, eth, Usdc).\n- Auto-normalize:\n  - ETH → WETH  \n  - MATIC → WMATIC  \n  - USDC_E → USDC  \n- Always pass the normalized symbol.\n\n### Amount\n- String decimal, human readable.\n- Examples: \"0.5\", \"1\", \"10.25\"\n- Never wei, never commas.\n\n### Networks\nSupported networks (lowercase):\n- ethereum\n- base\n- polygon\n- arbitrum\n- optimism\n- bsc\n- avalanche\n- fantom\n- gnosis\n- zksync\n- linea\n- scroll\n- blast\n- mode\n\nRules:\n- If user does not specify, use: network=\"base\"\n- If user specifies a known chain (e.g. “on polygon”), use that one.\n\n### Addresses\n- Must be hex string with 0x prefix.\n- If user provides ENS or invalid address, ask for proper 0x address.\n- Required only for tx/simple and balances.\n\n========================\nTOOL SELECTION LOGIC\n========================\n\n1) If user wants to know how much they would receive, or wants a price:\n   → Use **Quote Simple**  \n   (quote/simple)\n\n2) If the user expresses clear intent to execute/prepare a swap:\n   “swap now”, “prepare transaction”, “give me the tx”, “I want to swap”\n   → Use **Swap Transaction Simple**  \n   (tx/simple)\n\n3) If user wants wallet balances:\n   → Use **Wallet Balances**  \n   (balances/:address)\n\n4) If user is unclear about required fields (like missing address for a swap tx):\n   → Ask a short clarification before calling a tool.\n\n5) Never call the wrong tool for the wrong intent.\n\n\n========================\nHOW TO FORMAT TOOL PARAMETERS\n========================\n\n### Quote Simple\n{\n  \"fromSymbol\": \"WETH\",\n  \"toSymbol\": \"USDC\",\n  \"amount\": \"1\",\n  \"network\": \"polygon\"\n}\n\n### Swap Transaction Simple\n{\n  \"fromSymbol\": \"USDC\",\n  \"toSymbol\": \"WETH\",\n  \"amount\": \"100\",\n  \"fromAddress\": \"0x123...\",\n  \"network\": \"base\",\n  \"slippage\": 1\n}\n\n### Wallet Balances\nPath: /balances/0x123...\nQuery:\n{\n  \"network\": \"optimism\"\n}\n\n\n========================\nHOW TO PRESENT RESULTS\n========================\n\n- For quotes:\n  - Report expected output amount and price impact in simple terms.\n- For swap transaction:\n  - Summarize transaction object fields clearly (no raw JSON unless user asks).\n- For balances:\n  - List tokens with symbols and quantities.\n- Keep responses clean, short, and helpful.\n- If the user requests raw data, provide full JSON.\n\n========================\nBEHAVIOR SUMMARY\n========================\n\n- Always normalize symbols and networks.\n- Always ensure amount is decimal string.\n- Automatically choose the correct tool.\n- Ask only minimal clarifications if required (address missing, tokens unclear).\n- Never invent tokens or networks not supported.\n- Produce friendly explanations for humans, and perfect parameters for the tool.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [208, 0],
+      "id": "50145062-9a13-4d89-a34e-ef5cbd61ba30",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [-32, 288],
+      "id": "6e2bb4f2-73c6-46d8-914c-dff645f97c83",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YouSccIQMKcenH6",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [160, 304],
+      "id": "72b0eb23-a656-46f9-b454-6346487be3b1",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YouSccIQMKcenH6",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [304, 288],
+      "id": "6b266b58-d3af-488e-ab3e-b7637ca867c8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "url": "http://hack-backend:3000/oneinch/quote/simple",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `Supported networks (lowercase): - ethereum - base - polygon - arbitrum - optimism - bsc - avalanche - fantom - gnosis - zksync - linea - scroll - blast - mode Rules: - If user does not specify, use: network=\"base\" - If user specifies a known chain (e.g. “on polygon”), use that one.`, 'string') }}"
+            },
+            {
+              "name": "fromSymbol",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `### Symbols (fromSymbol, toSymbol) - Accept uppercase or lowercase (ETH, eth, Usdc). - Auto-normalize: - ETH → WETH - MATIC → WMATIC - USDC_E → USDC - Always pass the normalized symbol.`, 'string') }}"
+            },
+            {
+              "name": "toSymbol",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `### Symbols (fromSymbol, toSymbol) - Accept uppercase or lowercase (ETH, eth, Usdc). - Auto-normalize: - ETH → WETH - MATIC → WMATIC - USDC_E → USDC - Always pass the normalized symbol.`, 'string') }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters3_Value', `### Amount - String decimal, human readable. - Examples: \"0.5\", \"1\", \"10.25\" - Never wei, never commas.`, 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [496, 272],
+      "id": "d362ddd1-f88e-4fa0-8298-3ededbef8900",
+      "name": "Quote Simple"
+    },
+    {
+      "parameters": {
+        "url": "http://hack-backend:3000/oneinch/balances/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "address",
+              "value": "={{ $json.address }}"
+            },
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `### Symbols (fromSymbol, toSymbol) - Accept uppercase or lowercase (ETH, eth, Usdc). - Auto-normalize: - ETH → WETH - MATIC → WMATIC - USDC_E → USDC - Always pass the normalized symbol.`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [880, 240],
+      "id": "12f5c217-eca4-434a-a7d9-4736a76bd9af",
+      "name": "Wallet Balances"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hack-backend:3000/oneinch/quote/simple",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "fromSymbol",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', ``, 'string') }}"
+            },
+            {
+              "name": "toSymbol",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', ``, 'string') }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters3_Value', ``, 'string') }}"
+            },
+            {
+              "name": "fromAddress",
+              "value": "={{ $json.address }}"
+            },
+            {
+              "name": "slippage",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [832, 560],
+      "id": "1f2afa63-3d98-4054-8f2e-18e1663d70aa",
+      "name": "Swap Transaction Simple"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "address"
+            },
+            {
+              "name": "sessionId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-16, 0],
+      "id": "a1a6fff4-2030-4170-94d6-167d0824e325",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YabhRPwNOG4o23oZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/YabhRPwNOG4o23oZ",
+          "cachedResultName": "1inch Swap tool"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "network": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('network', `Supported networks (lowercase): - ethereum - base - polygon - arbitrum - optimism - bsc - avalanche - fantom - gnosis - zksync - linea - scroll - blast - mode Rules: - If user does not specify, use: network=\"base\" - If user specifies a known chain (e.g. “on polygon”), use that one.`, 'string') }}",
+            "fromSymbol": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fromSymbol', `### Symbols (fromSymbol, toSymbol) - Accept uppercase or lowercase (ETH, eth, Usdc). - Auto-normalize: - ETH → WETH - MATIC → WMATIC - USDC_E → USDC - Always pass the normalized symbol.`, 'string') }}",
+            "toSymbol": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('toSymbol', `### Symbols (fromSymbol, toSymbol) - Accept uppercase or lowercase (ETH, eth, Usdc). - Auto-normalize: - ETH → WETH - MATIC → WMATIC - USDC_E → USDC - Always pass the normalized symbol.`, 'string') }}",
+            "amount": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('amount', `### Amount - String decimal, human readable. - Examples: \"0.5\", \"1\", \"10.25\" - Never wei, never commas.`, 'string') }}",
+            "fromAddress": "={{ $json.address }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "network",
+              "displayName": "network",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fromSymbol",
+              "displayName": "fromSymbol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "toSymbol",
+              "displayName": "toSymbol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fromAddress",
+              "displayName": "fromAddress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [656, 272],
+      "id": "57cc8176-1528-4035-8155-e4aadce9db91",
+      "name": "Call '1inch Swap tool'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quote Simple": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wallet Balances": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Swap Transaction Simple": {
+      "ai_tool": [[]]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '1inch Swap tool'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [[]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6737a485-502b-4f67-b7af-21cafa08649f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d737c946da882b40563e0d671e8563c329513ef7a16c31d5dbf484b3613832ae"
+  },
+  "id": "o36UNnsZuozJ2s5a",
+  "tags": []
+}

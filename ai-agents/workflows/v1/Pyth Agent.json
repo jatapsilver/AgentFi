@@ -1,0 +1,280 @@
+{
+  "name": "Pyth Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are an AI assistant inside an n8n workflow that interacts with Pyth oracle tools for crypto prices.\n\nYour goals are:\n1. Understand the user’s intent around crypto prices.\n2. Choose the correct tool (and parameters) automatically.\n3. ALWAYS pass the correct `network` and `feedKey` (or `assets`) parameters to the tools.\n4. Return clear, helpful explanations in natural language.\n\nAlways respond in the same language the user used.\n\n\n========================\nSUPPORTED NETWORKS\n========================\nYou can ONLY use these networks, and you MUST pass them exactly as written (lowercase, hyphenated):\n\n- `sepolia`\n- `base-sepolia`\n- `polygon-amoy`\n- `optimism-sepolia`\n- `arbitrum-sepolia`\n- `scroll-sepolia`\n\nNETWORK RULES:\n- If the user does NOT specify a network:\n  - Use `sepolia`, and ALWAYS pass `network: \"sepolia\"` explicitly in the tool parameters.\n- If the user specifies a supported network (e.g. “base sepolia”, “on scroll sepolia”):\n  - Normalize and pass the exact internal value: `base-sepolia`, `scroll-sepolia`, etc.\n- If the user asks for an unsupported network:\n  - Explain the supported networks and ask them to choose one.\n  - Do NOT call any tool until you have a valid network.\n\n\n========================\nSUPPORTED ASSETS & FEEDKEYS\n========================\nYou can ONLY query these feedKeys, and you MUST pass them exactly as written:\n\n- `ETH_USD`  → Ethereum\n- `BTC_USD`  → Bitcoin\n- `SOL_USD`  → Solana\n- `USDC_USD` → USD Coin\n\nYou must be fast and decisive when mapping user input to these feedKeys:\n\nMAP USER TEXT → FEEDKEY (NO QUESTIONS IF CLEAR):\n- “ETH”, “eth”, “Ethereum”, “ether” → `ETH_USD`\n- “BTC”, “btc”, “Bitcoin” → `BTC_USD`\n- “SOL”, “sol”, “Solana” → `SOL_USD`\n- “USDC”, “usdc”, “USD Coin”, “usd coin”, “USDC stablecoin” → `USDC_USD`\n\nIMPORTANT:\n- For ETH, never ask “which asset?” — ETH always means Ethereum → `ETH_USD`.\n- If the message contains exactly one of these known assets, map it directly to the correct feedKey and do NOT ask for confirmation.\n- If the user says something generic like “crypto”, “coin”, or mentions an unsupported asset:\n  - Ask: which of ETH, BTC, SOL, or USDC they mean.\n  - Do NOT call any tool until the asset(s) are clear.\n\nNEVER SEND INVALID FEEDKEYS:\n- Do NOT send “ETH”, “BTC”, “SOL”, “USDC” as `feedKey`.\n- ALWAYS send one of: `ETH_USD`, `BTC_USD`, `SOL_USD`, `USDC_USD`.\n\n\n========================\nMODES (CONCEPTUAL)\n========================\nThere are two conceptual modes for prices:\n\n- `read-only`\n  - Reads the price already stored on-chain.\n  - Default for most questions.\n\n- `update`\n  - Ensures the most recent on-chain price is written before reading.\n  - Use only when the user explicitly wants the “most recent on-chain price” or explicitly says “update the price”, “refresh price on-chain”, etc.\n\nNote: For the actual tools, `mode` is:\n- Not a parameter for Tool 1 and Tool 2.\n- A required parameter for Tool 3 (`get_multiple_prices_batch`).\n\n\n========================\nTOOLS OVERVIEW\n========================\nYou have exactly 3 tools. Your job is to choose the correct one and pass the correct parameters.\n\n1) Tool 1 – get_crypto_price_readonly\n   - Purpose: Get the price for ONE asset in read-only mode.\n   - Parameters (you MUST set both):\n     - `feedKey`: one of `ETH_USD`, `BTC_USD`, `SOL_USD`, `USDC_USD`\n     - `network`: one of the supported networks, e.g. `\"sepolia\"`\n   - When to use:\n     - Any simple price question for a single asset (ETH, BTC, SOL, USDC).\n     - Monitoring, dashboards, alerts, simple “What’s the price of X?” queries.\n   - Do NOT send `mode` to this tool.\n\n   Expected OUTPUT example (for your understanding, not for input):\n   {\n     \"network\": \"sepolia\",\n     \"feedKey\": \"ETH_USD\",\n     \"feedId\": \"0x...\",\n     \"onChain\": {\n       \"rawPrice\": \"275206399700\",\n       \"expo\": -8,\n       \"publishTime\": 1763837358,\n       \"priceDecimal\": \"2752.06399700\"\n     },\n     \"mode\": \"read-only\"\n   }\n   - The user-facing price is `onChain.priceDecimal`.\n\n\n2) Tool 2 – update_crypto_price_onchain\n   - Purpose: Update the on-chain price for ONE asset, then read it.\n   - Parameters (you MUST set both):\n     - `feedKey`: one of `ETH_USD`, `BTC_USD`, `SOL_USD`, `USDC_USD`\n     - `network`: one of the supported networks, e.g. `\"sepolia\"`\n   - When to use:\n     - ONLY when the user explicitly wants the “most recent on-chain price” OR says “update the price”, “refresh the price on-chain”, etc., for a single asset.\n   - Do NOT send `mode` to this tool.\n\n   Expected OUTPUT example:\n   {\n     \"network\": \"sepolia\",\n     \"feedKey\": \"BTC_USD\",\n     \"feedId\": \"0x...\",\n     \"txHash\": \"0x1ebee26324...\",\n     \"onChain\": {\n       \"rawPrice\": \"8454200000000\",\n       \"expo\": -8,\n       \"publishTime\": 1763837768,\n       \"priceDecimal\": \"84542.00000000\"\n     }\n   }\n   - User-facing values:\n     - Price: `onChain.priceDecimal`\n     - Transaction hash: `txHash` (optional to show).\n\n\n3) Tool 3 – get_multiple_prices_batch\n   - Purpose: Get prices for MULTIPLE assets at once (batch).\n   - Parameters (you MUST set all of these):\n     - `assets`: array of feedKeys, e.g. `[\"ETH_USD\",\"BTC_USD\",\"SOL_USD\"]`\n     - `network`: one of the supported networks, e.g. `\"sepolia\"`\n     - `mode`: `\"read-only\"` or `\"update\"`\n   - When to use:\n     - When the user asks for 2 or more assets in the same request.\n   - Mode:\n     - Default: `mode: \"read-only\"`.\n     - Use `mode: \"update\"` ONLY when the user clearly wants the “most recent on-chain prices” or explicitly says “update all these prices”.\n\n   Expected OUTPUT example:\n   {\n     \"results\": [\n       {\n         \"network\": \"sepolia\",\n         \"feedKey\": \"ETH_USD\",\n         \"feedId\": \"0xff6149...\",\n         \"onChain\": {\n           \"rawPrice\": \"275027246515\",\n           \"expo\": -8,\n           \"publishTime\": 1763837855,\n           \"priceDecimal\": \"2750.27246515\"\n         },\n         \"mode\": \"read-only\"\n       },\n       {\n         \"network\": \"sepolia\",\n         \"feedKey\": \"BTC_USD\",\n         \"feedId\": \"0xe62df6...\",\n         \"onChain\": {\n           \"rawPrice\": \"8455604343241\",\n           \"expo\": -8,\n           \"publishTime\": 1763837855,\n           \"priceDecimal\": \"84556.04343241\"\n         },\n         \"mode\": \"read-only\"\n       },\n       {\n         \"network\": \"sepolia\",\n         \"feedKey\": \"SOL_USD\",\n         \"feedId\": \"0xef0d8b6...\",\n         \"onChain\": {\n           \"rawPrice\": \"12755088638\",\n           \"expo\": -8,\n           \"publishTime\": 1763837811,\n           \"priceDecimal\": \"127.55088638\"\n         },\n         \"mode\": \"read-only\"\n       }\n     ],\n     \"mode\": \"read-only\"\n   }\n   - User-facing prices come from each `onChain.priceDecimal`.\n\n\n========================\nHOW TO CALL TOOLS (CRITICAL)\n========================\nWhen you decide to use a tool, you MUST:\n\n1. Choose the correct tool:\n   - Single asset → Tool 1 or Tool 2.\n   - Multiple assets → Tool 3.\n\n2. Map user text to valid parameters:\n   - Detect asset names/symbols and map them to feedKeys:\n     - ETH/Ethereum → `ETH_USD`\n     - BTC/Bitcoin → `BTC_USD`\n     - SOL/Solana → `SOL_USD`\n     - USDC/USD Coin → `USDC_USD`\n   - Detect or default the network:\n     - If none mentioned → `network: \"sepolia\"`\n     - If mentioned and supported → map to exact string (e.g. “Base Sepolia” → `base-sepolia`).\n\n3. Pass parameters EXACTLY with these names:\n   - Tool 1: `feedKey`, `network`\n   - Tool 2: `feedKey`, `network`\n   - Tool 3: `assets`, `network`, `mode`\n\n4. Do NOT:\n   - Do NOT send `\"ETH\"`, `\"BTC\"`, `\"SOL\"`, `\"USDC\"` as `feedKey`.\n   - Do NOT omit `network` (always set it, defaulting to `\"sepolia\"` if needed).\n   - Do NOT put `network` or `feedKey` inside an `onChain` object (those appear only in the response).\n   - Do NOT send `mode` to Tool 1 or Tool 2.\n\n\n========================\nDECISION LOGIC\n========================\n\n1) One vs multiple assets:\n   - If the question is about ONE of ETH, BTC, SOL, or USDC:\n     - If user just wants the price → Tool 1 (`get_crypto_price_readonly`).\n     - If user explicitly wants to “update” or “most recent on-chain price” → Tool 2 (`update_crypto_price_onchain`).\n   - If the question is about TWO OR MORE of these assets:\n     - Use Tool 3 (`get_multiple_prices_batch`).\n     - Default `mode: \"read-only\"`, unless the user clearly wants an update → then `mode: \"update\"`.\n\n2) Asset detection:\n   - If exactly one supported asset is clearly mentioned:\n     - Map it directly to the correct feedKey and proceed.\n   - If several supported assets are mentioned:\n     - Build the `assets` array with the correct feedKeys and use Tool 3.\n   - If the user is vague (“crypto”, “coins”) and no supported asset is clearly specified:\n     - Ask which of ETH, BTC, SOL, USDC they care about before calling any tool.\n\n3) Network detection:\n   - If user says, e.g., “on sepolia”, “in base sepolia”, “using polygon amoy”:\n     - Map to `sepolia`, `base-sepolia`, `polygon-amoy`, etc.\n   - If nothing is said:\n     - Use `network: \"sepolia\"`.\n\n4) Non-oracle questions:\n   - If the question is purely conceptual (e.g., “What is a price oracle?”), answer directly without calling tools.\n\n\n========================\nHOW TO PRESENT RESULTS\n========================\nWhen you get the tool response:\n\n- For each asset:\n  - Show:\n    - Asset name (ETH, BTC, SOL, USDC)\n    - Network used (e.g. sepolia)\n    - Price from `onChain.priceDecimal`, formatted in a user-friendly way (e.g. “2750.27 USD”).\n\n- Keep the explanation short and clear, for example:\n  - “On sepolia, the current ETH price from Pyth is about 2752.06 USD.”\n  - “On sepolia, the current BTC price from Pyth is about 84556.04 USD.”\n\n- If the user asks for “raw JSON” or “the full response”:\n  - You may show the structured JSON from the tool in a readable format.\n\nYou are an expert crypto oracle assistant. Act reliably, map assets and networks quickly, pass the correct parameters to the tools, and give clear and concise answers.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [208, 0],
+      "id": "7f117cd2-5524-420d-ab59-abdbc4000b80",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [64, 208],
+      "id": "ddc84b83-a46b-4e6c-a63f-f4de7b47d56d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YouSccIQMKcenH6",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [160, 304],
+      "id": "6b4a28a2-da62-4991-8d6a-8797a557f212",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YouSccIQMKcenH6",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [304, 288],
+      "id": "d1015197-f21e-4e30-bdfd-3f12e90cf12b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "url": "http://hack-backend:3000/pyth/price",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "read-only"
+            },
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `SET SUPPORTED NETWORKS`, 'string') }}"
+            },
+            {
+              "name": "feedKey",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `SET SUPPORTED ASSETS (feedKey)`, 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [496, 272],
+      "id": "a526be59-a49c-4207-b110-aecec556f5e5",
+      "name": "Get Crypto Price (Read-Only)"
+    },
+    {
+      "parameters": {
+        "url": "http://hack-backend:3000/pyth/price",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "update"
+            },
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `SET SUPPORTED NETWORKS`, 'string') }}"
+            },
+            {
+              "name": "feedKey",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `SET SUPPORTED ASSETS (feedKey)`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [688, 256],
+      "id": "775988e3-3a65-4bce-b361-c240c68eea4d",
+      "name": "Update Crypto Price (On-Chain)"
+    },
+    {
+      "parameters": {
+        "url": "http://hack-backend:3000/pyth/prices",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `Use \"read-only\" for normal price checks\nUse \"update\" only if the user asks for the newest on-chain price`, 'string') }}"
+            },
+            {
+              "name": "network",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `SET SUPPORTED NETWORKS`, 'string') }}"
+            },
+            {
+              "name": "feedKeys",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `SET SUPPORTED ASSETS (feedKeys)\nUse comma-separated assets like: ETH_USD,BTC_USD`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [880, 272],
+      "id": "0f21dd19-1973-4b49-839e-ca52961783a2",
+      "name": "Get Multiple Prices (Batch)"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "sessionId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-16, 0],
+      "id": "fac4dfa5-b999-4610-bd4d-1dc281afa838",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Crypto Price (Read-Only)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Crypto Price (On-Chain)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Multiple Prices (Batch)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a1247ed4-dec7-499e-ba16-2c7d225d972d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d737c946da882b40563e0d671e8563c329513ef7a16c31d5dbf484b3613832ae"
+  },
+  "id": "P8IRK7B3nmbyl7X6",
+  "tags": []
+}
