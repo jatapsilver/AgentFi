@@ -40,6 +40,13 @@ export class AuthService {
   }
 
   async validateToken(token: string) {
+    if (
+      !token ||
+      !/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(token)
+    ) {
+      return { valid: false };
+    }
+
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       throw new NotImplementedException('Server configuration is incorrect');
